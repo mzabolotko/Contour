@@ -82,6 +82,7 @@ namespace Contour.RabbitMq.Tests
                     });
 
                 bus.Start();
+                Thread.Sleep(5000);
                 var cons = this.Broker.GetConnections();
 
                 Assert.IsTrue(cons.Count() == 1);
@@ -111,10 +112,12 @@ namespace Contour.RabbitMq.Tests
                     });
 
                 bus.Start();
+                Thread.Sleep(5000);
                 var cons = this.Broker.GetConnections();
                 
                 // One connection is used by default by fault message producers
                 Assert.IsTrue(cons.Count() == 3 + 1);
+                bus.Dispose();
             }
 
             [Test]
@@ -131,6 +134,7 @@ namespace Contour.RabbitMq.Tests
                    });
 
                 bus.Start();
+                Thread.Sleep(5000);
                 var cons = this.Broker.GetConnections();
 
                 Assert.IsTrue(cons.Count() == 1);
@@ -157,6 +161,7 @@ namespace Contour.RabbitMq.Tests
                     });
 
                 bus.Start();
+                Thread.Sleep(5000);
                 var cons = this.Broker.GetConnections();
 
                 // One connection is used by default by fault message producers

@@ -1,5 +1,7 @@
 *.suo
 .fake/
+.axoCover/
+.vs/
 bin/
 obj/
 paket-files/

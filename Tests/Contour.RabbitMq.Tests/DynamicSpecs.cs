@@ -30,13 +30,11 @@ namespace Contour.RabbitMq.Tests
         [Category("Integration")]
         public class when_consuming_non_cls_compliant_message : RabbitMqFixture
         {
-            #region Public Methods and Operators
-
             /// <summary>
             /// The should_deserialize_message_to_valid_clr_object.
             /// </summary>
             [Test]
-            [Explicit("A broken experiment.")]
+            [Ignore("A broken experiment.")]
             public void should_deserialize_message_to_valid_clr_object()
             {
                 int result = 0;
@@ -67,8 +65,6 @@ namespace Contour.RabbitMq.Tests
                 result.Should().
                     Be(13);
             }
-
-            #endregion
 
             /// <summary>
             /// The lower case delimited property names contract resovler.
@@ -165,8 +161,6 @@ namespace Contour.RabbitMq.Tests
             /// </summary>
             private class SmartJsonNetSerializer : IPayloadConverter
             {
-                #region Public Properties
-
                 /// <summary>
                 /// Gets the content type.
                 /// </summary>
@@ -177,10 +171,6 @@ namespace Contour.RabbitMq.Tests
                         return "application/json";
                     }
                 }
-
-                #endregion
-
-                #region Public Methods and Operators
 
                 /// <summary>
                 /// The from object.
@@ -217,8 +207,6 @@ namespace Contour.RabbitMq.Tests
 
                     return JsonConvert.DeserializeObject(decoded, targetType, serializerSettings);
                 }
-
-                #endregion
             }
         }
 

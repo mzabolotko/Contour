@@ -292,6 +292,7 @@ namespace Contour.RabbitMq.Tests
                             .WithDefaultCallbackEndpoint();
                     });
                 producer.WhenReady.WaitOne();
+                Thread.Sleep(5000);
 
                 foreach (var url in urls)
                 {

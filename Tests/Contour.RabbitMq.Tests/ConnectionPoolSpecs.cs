@@ -103,9 +103,10 @@ namespace Contour.RabbitMq.Tests
                     var con = pool.Get(ConString, false, source.Token);
                     return con;
                 });
-            
             task.Wait(5.Seconds());
+            Thread.Sleep(10000);
             source.Cancel();
+            Thread.Sleep(50000);
 
             Assert.Throws<AggregateException>(() => task.Wait(5.Seconds()));
         }
