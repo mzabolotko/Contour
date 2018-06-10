@@ -326,7 +326,7 @@ namespace Contour.RabbitMq.Tests
 
                 bus.WhenReady.WaitOne(1.Minutes()).Should().BeTrue();
 
-                var factory = new ConnectionFactory() { Uri = this.ConnectionString };
+                var factory = new ConnectionFactory() { Uri = new Uri(this.ConnectionString) };
                 var connection = factory.CreateConnection();
                 var publishModel = connection.CreateModel();
 

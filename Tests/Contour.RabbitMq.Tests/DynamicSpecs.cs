@@ -36,7 +36,7 @@ namespace Contour.RabbitMq.Tests
             /// The should_deserialize_message_to_valid_clr_object.
             /// </summary>
             [Test]
-            [Explicit("A broken experiment.")]
+            [Ignore("A broken experiment.")]
             public void should_deserialize_message_to_valid_clr_object()
             {
                 int result = 0;

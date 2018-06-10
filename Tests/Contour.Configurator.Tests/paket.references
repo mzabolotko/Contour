@@ -1,8 +1,10 @@
 ﻿Common.Logging
 FluentAssertions
 FluentValidation
-Moq
 Newtonsoft.Json
-Ninject
-NUnit
 RabbitMQ.Client
+
+group Test
+    Moq
+    Ninject
+    NUnit

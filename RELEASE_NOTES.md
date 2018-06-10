@@ -1,4 +1,8 @@
-﻿## 1.8.0-rc3
+﻿## 1.8.0-rc4
+- Changes:
+    + Upgraded RabbitMQ.Client to 5.0.1
+
+## 1.8.0-rc3
 - Changes:
     + Removed circuit breaker from FaultTolerantProducer
 

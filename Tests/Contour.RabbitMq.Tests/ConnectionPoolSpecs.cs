@@ -105,7 +105,9 @@ namespace Contour.RabbitMq.Tests
                 });
             
             task.Wait(5.Seconds());
+            Thread.Sleep(10000);
             source.Cancel();
+            Thread.Sleep(50000);
 
             Assert.Throws<AggregateException>(() => task.Wait(5.Seconds()));
         }

@@ -1,21 +1,33 @@
-﻿#r "packages/FAKE/tools/FakeLib.dll" // include Fake lib
-open Fake
-open Fake.AssemblyInfoFile
+﻿#r "paket:
+nuget Fake.IO.FileSystem
+nuget Fake.DotNet.AssemblyInfoFile
+nuget Fake.DotNet.MSBuild
+nuget Fake.DotNet.Testing.NUnit
+nuget Fake.DotNet.Paket
+nuget Fake.Core.Target
+nuget Fake.Core.ReleaseNotes //"
+#load "./.fake/build.fsx/intellisense.fsx"
 
-open System
-open System.IO
+open Fake.DotNet
+open Fake.DotNet.Testing
+open Fake.Core
+open Fake.Core.TargetOperators
+open Fake.IO
+open Fake.IO.Globbing.Operators
+open Fake.IO.FileSystemOperators
 
-Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
+
+System.Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
 let project = "Contour"
-let authors = ["SDVentures Team"]
+let authors = [ "Mikhail Zabolotko" ]
 let summary = "A library contains implementation of several EIP patterns to build the service bus."
 let description = """
-  The package contains abstract interfaces of service bus and specific transport implementation for AMQP/RabbitMQ."""
+The package contains abstract interfaces of service bus and specific transport implementation for AMQP/RabbitMQ."""
 let license = "MIT License"
 let tags = "rabbitmq client servicebus"
 
-let release = ReleaseNotesHelper.parseReleaseNotes (File.ReadLines "RELEASE_NOTES.md")
+let release = ReleaseNotes.parse (System.IO.File.ReadLines "RELEASE_NOTES.md")
 
 let buildDir = @"build\"
 let nugetDir = @"nuget\"
@@ -26,91 +38,76 @@ let projects =
 let tests =
     !! "Tests/**/*.csproj"
 
-let isAppVeyorBuild = environVar "APPVEYOR" <> null
-let appVeyorBuildNumber = environVar "APPVEYOR_BUILD_NUMBER"
-let appVeyorRepoCommit = environVar "APPVEYOR_REPO_COMMIT"
-
-
-Target "CleanUp" (fun _ ->
-    CleanDirs [ buildDir ]
+Target.create "CleanUp" (fun _ ->
+    Shell.cleanDirs [ buildDir ]
 )
 
-Target "BuildVersion" (fun _ ->
-    let buildVersion = sprintf "%s-build%s" release.NugetVersion appVeyorBuildNumber
+Target.create "BuildVersion" (fun _ ->
+    let buildVersion = sprintf "%s-build%s" release.NugetVersion BuildServer.appVeyorBuildVersion
     Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" buildVersion) |> ignore
 )
 
-Target "AssemblyInfo" (fun _ ->
+Target.create "AssemblyInfo" (fun _ ->
     printfn "%A" release
     let info =
-        [ Attribute.Title project
-          Attribute.Product project
-          Attribute.Description summary
-          Attribute.Version release.AssemblyVersion
-          Attribute.FileVersion release.AssemblyVersion
-          Attribute.InformationalVersion release.NugetVersion
-          Attribute.Copyright license ]
-    CreateCSharpAssemblyInfo <| "./Sources/" @@ project @@ "/Properties/AssemblyInfo.cs" <| info
+        [ AssemblyInfo.Title project
+          AssemblyInfo.Company (authors |> String.concat ",")
+          AssemblyInfo.Product project
+          AssemblyInfo.Description summary
+          AssemblyInfo.Version release.AssemblyVersion
+          AssemblyInfo.FileVersion release.AssemblyVersion
+          AssemblyInfo.InformationalVersion release.NugetVersion
+          AssemblyInfo.Copyright license ]
+    AssemblyInfoFile.createCSharp <| "./Sources/" @@ project @@ "/Properties/AssemblyInfo.cs" <| info
 )
 
-Target "Build" (fun () ->
-    MSBuildRelease buildDir "Build" projects |> Log "Build Target Output: "
+Target.create "Build" (fun _ ->
+    projects
+    |> MSBuild.runRelease id "" "Rebuild"
+    |> Trace.logItems "Build Target Output: "
 )
 
-Target "RunUnitTests" (fun () ->
-    tests |> MSBuildDebug "" "Rebuild" |> ignore
+Target.create "RunUnitTests" (fun _ ->
+    tests
+    |> MSBuild.runDebug id "" "Rebuild"
+    |> Trace.logItems "Build Target Output: "
+
     !! "Tests/**/bin/Debug/*Common.Tests.dll"
-    |> NUnit (fun p ->
+    |> NUnit.Sequential.run (fun p ->
            { p with
                 DisableShadowCopy = false
-                ToolPath = "./packages/NUnit.Runners/tools/"
-                Framework = "4.0"
                 OutputFile = "TestResults.xml"
-                TimeOut = TimeSpan.FromMinutes 20. })
+                TimeOut = System.TimeSpan.FromMinutes 20. })
 )
 
-Target "RunAllTests" (fun () ->
-    tests |> MSBuildDebug "" "Rebuild" |> ignore
+Target.create "RunAllTests" (fun _ ->
+    tests
+    |> MSBuild.runDebug id "" "Rebuild"
+    |> Trace.logItems "Build Target Output: "
+
     !! "Tests/**/bin/Debug/*.Tests.dll"
-    |> NUnit (fun p ->
+    |> NUnit.Sequential.run (fun p ->
            { p with
                 DisableShadowCopy = false
-                ToolPath = "./packages/NUnit.Runners/tools/"
-                Framework = "4.0"
                 OutputFile = "TestResults.xml"
-                TimeOut = TimeSpan.FromMinutes 20. })
+                TimeOut = System.TimeSpan.FromMinutes 20. })
 )
 
-Target "Deploy" (fun () ->
-    NuGet (fun p ->
-        { p with
-            Authors = authors
-            Project = project
-            Summary = summary
-            Description = description
-            Version = release.NugetVersion
-            ReleaseNotes = toLines release.Notes
-            Tags = tags
-            OutputPath = buildDir
-            ToolPath = "./packages/NuGet.CommandLine/tools/Nuget.exe"
-            AccessKey = getBuildParamOrDefault "nugetkey" ""
-            Publish = hasBuildParam "nugetkey"
-            Dependencies =
-                [ "RabbitMQ.Client", GetPackageVersion "packages" "RabbitMQ.Client";
-                  "Common.Logging", GetPackageVersion "packages" "Common.Logging";
-                  "FluentValidation", GetPackageVersion "packages" "FluentValidation";
-                  "Newtonsoft.Json", GetPackageVersion "packages" "Newtonsoft.Json" ]
-            Files =
-                [ (@"..\" + buildDir + "Contour.dll", Some "lib/net40", None);
-                  (@"..\" + buildDir + "Contour.pdb", Some "lib/net40", None) ]})
-        <| (nugetDir + project + ".nuspec")
+Target.create "BuildPacket" (fun _ ->
+    Paket.pack (fun p ->
+                    { p with
+                        Version = release.NugetVersion })
 )
+
+Target.create "Default" ignore
 
 "CleanUp"
-    =?> ("BuildVersion", isAppVeyorBuild)
+    =?> ("BuildVersion", (not BuildServer.isLocalBuild))
     ==> "AssemblyInfo"
     ==> "Build"
     ==> "RunUnitTests"
-    ==> "Deploy"
+    =?> ("RunAlltests", BuildServer.isLocalBuild)
+    ==> "BuildPacket"
+    ==> "Default"
 
-RunTargetOrDefault "Deploy"
+Target.runOrDefault "Default"

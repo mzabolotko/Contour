@@ -1,5 +1,7 @@
 ﻿Common.Logging
 FluentAssertions
 FluentValidation
-Moq
-NUnit
+
+group Test
+    Moq
+    NUnit
