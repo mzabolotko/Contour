@@ -185,14 +185,6 @@ namespace Contour.Configuration
         }
 
         /// <summary>
-        /// The enable caching.
-        /// </summary>
-        public void EnableCaching()
-        {
-            this.RegisterFilter(new CacheMessageExchangeFilter(new MemoryCacheProvider()));
-        }
-
-        /// <summary>
         /// The handle lifecycle with.
         /// </summary>
         /// <param name="lifecycleHandler">

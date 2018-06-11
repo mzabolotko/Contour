@@ -28,6 +28,7 @@ namespace Contour.Configurator.Tests
     using Ninject;
 
     using NUnit.Framework;
+    using Contour.Testing;
 
     /// <summary>
     /// The bus configuration specs.
@@ -867,6 +868,7 @@ namespace Contour.Configurator.Tests
                 var bus = new BusFactory().Create(
                     c =>
                     {
+                        c.UsePayloadConverter(new JsonNetPayloadConverter());
                         c.SetConnectionString(this.ConnectionString);
                         c.SetExcludedIncomingHeaders(excludedHeaders);
                         c.SetEndpoint("consumer");
@@ -969,7 +971,11 @@ namespace Contour.Configurator.Tests
                 var section = new XmlEndpointsSection(ProducerConfig);
                 var sut = new AppConfigConfigurator(section, dependencyResoverMock.Object);
 
-                using (var bus = new BusFactory().Create(cfg => sut.Configure("producer", cfg), false))
+                using (var bus = new BusFactory().Create(cfg => 
+                {
+                    cfg.UsePayloadConverter(new JsonNetPayloadConverter());
+                    sut.Configure("producer", cfg);
+                }, false))
                 {
                     RabbitReceiverOptions rabbitReceiverOptions = ((BusConfiguration)bus.Configuration).ReceiverDefaults as RabbitReceiverOptions;
                     Assert.IsNotNull(rabbitReceiverOptions, "Долны быть установлены настройки получателя.");
@@ -1188,7 +1194,11 @@ namespace Contour.Configurator.Tests
                 var section = new XmlEndpointsSection(ProducerConfig);
                 var sut = new AppConfigConfigurator(section, dependencyResoverMock.Object);
 
-                using (var bus = new BusFactory().Create(cfg => sut.Configure("producer", cfg), false))
+                using (var bus = new BusFactory().Create(cfg =>
+                {
+                    cfg.UsePayloadConverter(new JsonNetPayloadConverter());
+                    sut.Configure("producer", cfg);
+                }, false))
                 {
                     Assert.IsTrue(bus.CanRoute(MessageLabel.Any), "Должна быть включена динамическая маршрутизация.");
                 }
@@ -2293,6 +2303,4 @@ namespace Contour.Configurator.Tests
             }
         }
     }
-
-    // ReSharper restore InconsistentNaming
 }

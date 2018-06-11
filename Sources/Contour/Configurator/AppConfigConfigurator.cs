@@ -149,11 +149,6 @@ namespace Contour.Configurator
                 cfg.HandleLifecycleWith(this.ResolveLifecycleHandler(endpointConfig.LifecycleHandler));
             }
 
-            if (endpointConfig.Caching != null && endpointConfig.Caching.Enabled)
-            {
-                cfg.EnableCaching();
-            }
-
             if (endpointConfig.ParallelismLevel.HasValue)
             {
                 cfg.UseParallelismLevel(endpointConfig.ParallelismLevel.Value);

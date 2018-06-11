@@ -125,21 +125,6 @@ Also you can set a value of 'group' parameter to 'true'. This would mean that yo
 </endpoint>
 ```
 
-### Caching
-
-Tag 'caching' controls the caching of incoming Request/Reply messages
-
-You can enable caching by setting attribute to ‘enabled’. At the requested side response is cached by the key, which is generated on the basis of the request body. Caching time is defined by the responder when calling 'Reply' method.
-
-'Publisher/Subscriber' requests are not cached.
-
-```xml
-<endpoint name="point1" connectionString="amqp://localhost:5672/">
-    <caching enabled="true"/>
-    <!-- ... -->
-</endpoint>
-```
-
 ### Configuring parallel consuming
 
 Endpoint provides ability to setup the necessary number of handler threads, processing incoming messages, in '**parallelismLevel**' attribute. Messages are distributed between the handlers by the Round-Robin principle.

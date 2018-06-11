@@ -1,4 +1,9 @@
-﻿## 1.8.0-rc4
+﻿## 2.0.0-rc1
+- Changes:
+    + Removed Newtonsoft.Json dependency.
+    + Removed support of caching.
+
+## 1.8.0-rc4
 - Changes:
     + Upgraded RabbitMQ.Client to 5.0.1
 
