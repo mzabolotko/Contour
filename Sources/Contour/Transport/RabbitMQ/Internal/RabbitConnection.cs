@@ -43,6 +43,7 @@ namespace Contour.Transport.RabbitMQ.Internal
             this.connectionFactory = new ConnectionFactory
             {
                 Uri = new Uri(this.ConnectionString),
+                AutomaticRecoveryEnabled = false,
                 ClientProperties = clientProperties,
                 RequestedConnectionTimeout = ConnectionTimeout
             };
