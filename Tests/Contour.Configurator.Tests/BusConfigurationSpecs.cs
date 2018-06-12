@@ -14,14 +14,10 @@ namespace Contour.Configurator.Tests
     using System.Threading;
 
     using FluentAssertions;
-
-    using FluentValidation;
-
     using Contour.Operators;
     using Contour.Receiving;
     using Contour.Receiving.Consumers;
     using Contour.Validation;
-    using Contour.Validation.Fluent;
 
     using Moq;
 
@@ -53,14 +49,35 @@ namespace Contour.Configurator.Tests
         /// <summary>
         /// The boo payload validator.
         /// </summary>
-        public class BooPayloadValidator : FluentPayloadValidatorOf<BooMessage>
+        public class BooPayloadValidator : IMessageValidatorOf<BooMessage>
         {
-            /// <summary>
-            /// Инициализирует новый экземпляр класса <see cref="BooPayloadValidator"/>.
-            /// </summary>
-            public BooPayloadValidator()
+            public ValidationResult Validate(Message<BooMessage> message)
             {
-                this.RuleFor(x => x.Num).GreaterThan(100);
+                return Validate(message.Payload);
+            }
+
+            public ValidationResult Validate(IMessage message)
+            {
+                if (message.Payload is BooMessage)
+                {
+                    return Validate((BooMessage)message.Payload);
+                }
+                else
+                {
+                    return new ValidationResult(new BrokenRule("should be BooMessage"));
+                }
+            }
+
+            private ValidationResult Validate(BooMessage booMessage)
+            {
+                if (booMessage.Num > 100)
+                {
+                    return ValidationResult.Valid;
+                }
+                else
+                {
+                    return new ValidationResult(new BrokenRule("should be greater than 100"));
+                }
             }
         }
 
@@ -237,15 +254,35 @@ namespace Contour.Configurator.Tests
         /// <summary>
         /// The foo payload validator.
         /// </summary>
-        public class FooPayloadValidator : FluentPayloadValidatorOf<FooMessage>
+        public class FooPayloadValidator : IMessageValidatorOf<FooMessage>
         {
-            /// <summary>
-            /// Инициализирует новый экземпляр класса <see cref="FooPayloadValidator"/>.
-            /// </summary>
-            public FooPayloadValidator()
+            public ValidationResult Validate(Message<FooMessage> message)
             {
-                this.RuleFor(x => x.Num).
-                    LessThan(100);
+                return Validate(message.Payload);
+            }
+
+            public ValidationResult Validate(IMessage message)
+            {
+                if (message.Payload is FooMessage)
+                {
+                    return Validate((FooMessage)message.Payload);
+                }
+                else
+                {
+                    return new ValidationResult(new BrokenRule("should be BooMessage"));
+                }
+            }
+
+            private ValidationResult Validate(FooMessage booMessage)
+            {
+                if (booMessage.Num < 100)
+                {
+                    return ValidationResult.Valid;
+                }
+                else
+                {
+                    return new ValidationResult(new BrokenRule("should be less than 100"));
+                }
             }
         }
 

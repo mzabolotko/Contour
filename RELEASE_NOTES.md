@@ -1,4 +1,8 @@
-﻿## 2.0.0-rc1
+﻿## 2.0.0-rc2
+- Changes:
+    + Removed FluentValidation dependency.
+
+## 2.0.0-rc1
 - Changes:
     + Removed Newtonsoft.Json dependency.
     + Removed support of caching.

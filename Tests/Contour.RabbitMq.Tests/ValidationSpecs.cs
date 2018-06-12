@@ -6,10 +6,7 @@ using Contour.Testing.Transport.RabbitMq;
 
 using FluentAssertions;
 
-using FluentValidation;
-
 using Contour.Validation;
-using Contour.Validation.Fluent;
 
 using NUnit.Framework;
 
@@ -25,39 +22,71 @@ namespace Contour.RabbitMq.Tests
         /// <summary>
         /// The boo validator.
         /// </summary>
-        public class BooValidator : FluentPayloadValidatorOf<BooMessage>
+        public class BooValidator : IMessageValidatorOf<BooMessage>
         {
-            #region Constructors and Destructors
-
-            /// <summary>
-            /// Инициализирует новый экземпляр класса <see cref="BooValidator"/>.
-            /// </summary>
-            public BooValidator()
+            public ValidationResult Validate(Message<BooMessage> message)
             {
-                this.RuleFor(x => x.Num).
-                    GreaterThan(100);
+                return Validate(message.Payload);
             }
 
-            #endregion
+            public ValidationResult Validate(IMessage message)
+            {
+                if (message.Payload is BooMessage)
+                {
+                    return Validate((BooMessage)message.Payload);
+                }
+                else
+                {
+                    return new ValidationResult(new BrokenRule("should be BooMessage"));
+                }
+            }
+
+            private ValidationResult Validate(BooMessage booMessage)
+            {
+                if (booMessage.Num > 100)
+                {
+                    return ValidationResult.Valid;
+                }
+                else
+                {
+                    return new ValidationResult(new BrokenRule("Num"));
+                }
+            }
         }
 
         /// <summary>
         /// The foo validator.
         /// </summary>
-        public class FooValidator : FluentPayloadValidatorOf<FooMessage>
+        public class FooValidator : IMessageValidatorOf<FooMessage>
         {
-            #region Constructors and Destructors
-
-            /// <summary>
-            /// Инициализирует новый экземпляр класса <see cref="FooValidator"/>.
-            /// </summary>
-            public FooValidator()
+            public ValidationResult Validate(Message<FooMessage> message)
             {
-                this.RuleFor(x => x.Num).
-                    LessThan(100);
+                return Validate(message.Payload);
             }
 
-            #endregion
+            public ValidationResult Validate(IMessage message)
+            {
+                if (message.Payload is FooMessage)
+                {
+                    return Validate((FooMessage)message.Payload);
+                }
+                else
+                {
+                    return new ValidationResult(new BrokenRule("should be BooMessage"));
+                }
+            }
+
+            private ValidationResult Validate(FooMessage booMessage)
+            {
+                if (booMessage.Num < 100)
+                {
+                    return ValidationResult.Valid;
+                }
+                else
+                {
+                    return new ValidationResult(new BrokenRule("Num"));
+                }
+            }
         }
 
         /// <summary>
@@ -177,16 +206,10 @@ namespace Contour.RabbitMq.Tests
 
                 producer.Emit("boo", new BooMessage(13));
 
-                consumed.WaitOne(3.Seconds()).
-                    Should().
-                    BeFalse();
-                failed.WaitOne(3.Seconds()).
-                    Should().
-                    BeTrue();
-                exception.Should().
-                    BeOfType<MessageValidationException>();
-                exception.Message.Should().
-                    Contain("Num");
+                consumed.WaitOne(3.Seconds()).Should().BeFalse();
+                failed.WaitOne(3.Seconds()).Should().BeTrue();
+                exception.Should().BeOfType<MessageValidationException>();
+                exception.Message.Should().Contain("Num");
             }
 
             #endregion

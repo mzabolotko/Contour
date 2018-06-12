@@ -1,5 +1,4 @@
 ﻿Common.Logging
-FluentValidation
 RabbitMQ.Client
 
 group Test
