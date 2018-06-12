@@ -17,6 +17,7 @@ using Contour.Transport.RabbitMQ;
 using Contour.Transport.RabbitMQ.Topology;
 
 using FluentAssertions;
+using FluentAssertions.Extensions;
 using NUnit.Framework;
 using RabbitMQ.Client;
 using Exchange = Contour.Transport.RabbitMQ.Topology.Exchange;
@@ -433,9 +434,9 @@ namespace Contour.RabbitMq.Tests
                     {
                         t.Wait(timeoutValue.Add(TimeSpan.FromMinutes(1)));
                     })
-                    .ShouldThrow<AggregateException>()
-                    .And
-                    .InnerExceptions.Should().ContainSingle(ex => ex.GetType() == typeof(TimeoutException));
+                    .Should().Throw<AggregateException>().And
+                    .InnerException.As<AggregateException>()
+                    .InnerExceptions.Should().ContainSingle(ex => ex.GetType() == typeof(TimeoutException) );
             }
         }
 

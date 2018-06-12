@@ -7,6 +7,7 @@ using Contour.Testing.Plumbing;
 using Contour.Testing.Transport.RabbitMq;
 using Contour.Transport.RabbitMQ;
 using FluentAssertions;
+using FluentAssertions.Extensions;
 using NUnit.Framework;
 // ReSharper disable InconsistentNaming
 

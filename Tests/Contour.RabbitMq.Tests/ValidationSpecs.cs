@@ -9,6 +9,7 @@ using FluentAssertions;
 using Contour.Validation;
 
 using NUnit.Framework;
+using FluentAssertions.Extensions;
 
 namespace Contour.RabbitMq.Tests
 {
@@ -138,29 +139,17 @@ namespace Contour.RabbitMq.Tests
 
                 producer.Emit("boo", new BooMessage(13));
 
-                consumed.WaitOne(3.Seconds()).
-                    Should().
-                    BeFalse();
-                failed.WaitOne(3.Seconds()).
-                    Should().
-                    BeTrue();
-                exception.Should().
-                    BeOfType<MessageValidationException>();
-                exception.Message.Should().
-                    Contain("Num");
+                consumed.WaitOne(3.Seconds()).Should().BeFalse();
+                failed.WaitOne(3.Seconds()).Should().BeTrue();
+                exception.Should().BeOfType<MessageValidationException>();
+                exception.Message.Should().Contain("Num");
 
                 producer.Emit("foo", new FooMessage(130));
 
-                consumed.WaitOne(3.Seconds()).
-                    Should().
-                    BeFalse();
-                failed.WaitOne(3.Seconds()).
-                    Should().
-                    BeTrue();
-                exception.Should().
-                    BeOfType<MessageValidationException>();
-                exception.Message.Should().
-                    Contain("Num");
+                consumed.WaitOne(3.Seconds()).Should().BeFalse();
+                failed.WaitOne(3.Seconds()).Should().BeTrue();
+                exception.Should().BeOfType<MessageValidationException>();
+                exception.Message.Should().Contain("Num");
             }
 
             #endregion

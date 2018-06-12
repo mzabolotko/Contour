@@ -14,6 +14,7 @@ using Contour.Testing.Transport.RabbitMq;
 
 using NUnit.Framework;
 using RabbitMQ.Client;
+using FluentAssertions.Extensions;
 
 namespace Contour.RabbitMq.Tests
 {

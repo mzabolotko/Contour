@@ -20,6 +20,7 @@ using RabbitMQ.Client;
 namespace Contour.RabbitMq.Tests
 {
     using Configuration;
+    using FluentAssertions.Extensions;
 
     /// <summary>
     /// The basic publishing specs.
@@ -193,7 +194,7 @@ namespace Contour.RabbitMq.Tests
                 IBus producer = this.StartBus("producer", cfg => cfg.Route(MessageLabel.Any));
 
                 producer.Invoking(p => p.Emit(MessageLabel.Any, new BooMessage(13)))
-                    .ShouldThrow<InvalidOperationException>();
+                    .Should().Throw<InvalidOperationException>();
             }
         }
 
@@ -213,7 +214,7 @@ namespace Contour.RabbitMq.Tests
                 IBus producer = this.StartBus("producer", cfg => cfg.Route(MessageLabel.Any));
 
                 producer.Invoking(p => p.Emit("dummy.request", new BooMessage(13)))
-                    .ShouldNotThrow();
+                    .Should().NotThrow();
             }
 
             /// <summary>

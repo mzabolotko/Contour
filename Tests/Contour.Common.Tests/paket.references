@@ -1,6 +1,5 @@
 ﻿Common.Logging
 
-group Test
-    FluentAssertions
-    Moq
-    NUnit
+FluentAssertions
+Moq
+NUnit

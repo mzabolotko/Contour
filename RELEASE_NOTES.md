@@ -1,5 +1,9 @@
 ﻿## 2.0.0-rc2
 - Changes:
+    + Updated Common.Logging and Fluent Assertions.
+
+## 2.0.0-rc2
+- Changes:
     + Removed FluentValidation dependency.
 
 ## 2.0.0-rc1

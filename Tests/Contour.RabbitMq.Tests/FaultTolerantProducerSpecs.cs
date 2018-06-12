@@ -142,7 +142,7 @@ namespace Contour.RabbitMq.Tests
                         return time;
                     });
 
-            action.ExecutionTimeOf(a => a()).ShouldNotExceed(TimeSpan.FromSeconds(overall + 1));
+            action.ExecutionTimeOf(a => a()).Should().BeLessThan(TimeSpan.FromSeconds(overall + 1));
         }
     }
 }

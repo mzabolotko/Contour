@@ -25,6 +25,7 @@ namespace Contour.Configurator.Tests
 
     using NUnit.Framework;
     using Contour.Testing;
+    using FluentAssertions.Extensions;
 
     /// <summary>
     /// The bus configuration specs.
@@ -1266,7 +1267,7 @@ namespace Contour.Configurator.Tests
                 busConfigurator.Route("label");
 
                 Action validate = () => configuration.Validate();
-                validate.ShouldNotThrow("Connection string may not be specified");
+                validate.Should().NotThrow("Connection string may not be specified");
             }
 
             [Test]

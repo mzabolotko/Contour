@@ -1,4 +1,3 @@
-﻿group Test
-    Newtonsoft.Json
-    NUnit
-    RestSharp
+﻿Newtonsoft.Json
+NUnit
+RestSharp

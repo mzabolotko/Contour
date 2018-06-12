@@ -145,7 +145,7 @@
 
                 Action readingConfig = () => new XmlEndpointsSection(config);
 
-                readingConfig.ShouldThrow<ConfigurationErrorsException>();
+                readingConfig.Should().Throw<ConfigurationErrorsException>();
             }
         }
 
@@ -202,7 +202,7 @@
 
                 Action readingConfig = () => new XmlEndpointsSection(config);
 
-                readingConfig.ShouldThrow<ConfigurationErrorsException>();
+                readingConfig.Should().Throw<ConfigurationErrorsException>();
             }
         }
         
@@ -500,7 +500,7 @@
                                         </endpoints>";
 
                 Action readingConfig = () => new XmlEndpointsSection(config);
-                readingConfig.ShouldNotThrow<ConfigurationErrorsException>();
+                readingConfig.Should().NotThrow<ConfigurationErrorsException>();
             }
         }
 

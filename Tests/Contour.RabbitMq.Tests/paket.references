@@ -1,9 +1,8 @@
 Common.Logging
 RabbitMQ.Client
 
-group Test
-    Newtonsoft.Json
-    FluentAssertions
-    NUnit
-    RestSharp
-    Moq
+Newtonsoft.Json
+FluentAssertions
+NUnit
+RestSharp
+Moq

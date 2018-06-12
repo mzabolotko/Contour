@@ -15,6 +15,8 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
 using NUnit.Framework;
+using FluentAssertions.Extensions;
+
 namespace Contour.RabbitMq.Tests
 {
     // ReSharper disable InconsistentNaming
@@ -93,7 +95,7 @@ namespace Contour.RabbitMq.Tests
                 /// The delimiter.
                 /// </param>
                 public LowerCaseDelimitedPropertyNamesContractResovler(char delimiter)
-                    : base(true)
+                    : base()
                 {
                     this._delimiter = delimiter;
                 }

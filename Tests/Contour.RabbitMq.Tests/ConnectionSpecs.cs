@@ -11,6 +11,7 @@ using RabbitMQ.Client.Exceptions;
 
 namespace Contour.RabbitMq.Tests
 {
+    using FluentAssertions.Extensions;
     using Moq;
     using Transport.RabbitMQ;
 
@@ -241,7 +242,7 @@ namespace Contour.RabbitMq.Tests
             {
                 IBus bus = this.ConfigureBus("Test", cfg => cfg.Route("some.label"));
 
-                bus.Invoking(b => b.Emit("some.label", new BooMessage(666))).ShouldThrow<BusNotReadyException>();
+                bus.Invoking(b => b.Emit("some.label", new BooMessage(666))).Should().Throw<BusNotReadyException>();
             }
         }
 

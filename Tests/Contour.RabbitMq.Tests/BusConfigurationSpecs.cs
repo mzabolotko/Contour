@@ -40,7 +40,7 @@ namespace Contour.RabbitMq.Tests
             {
                 Action busInitializationAction = () => this.StartBus("Test", cfg => { });
 
-                busInitializationAction.ShouldThrow<BusConfigurationException>();
+                busInitializationAction.Should().Throw<BusConfigurationException>();
             }
         }
 
@@ -63,7 +63,7 @@ namespace Contour.RabbitMq.Tests
                     bus = new BusFactory().Create(cfg => cfg.Route("something"));
                 };
 
-                busInitializationAction.ShouldThrow<BusConfigurationException>();
+                busInitializationAction.Should().Throw<BusConfigurationException>();
                 if (bus != null)
                 {
                     bus.Shutdown();
@@ -126,7 +126,7 @@ namespace Contour.RabbitMq.Tests
                             .WithEndpoint(seb => seb.ListenTo(seb.Topology.Declare(Queue.Named("some.queue"))));
                     });
 
-                bus.Invoking(b => b.Start()).ShouldThrow<BusConfigurationException>();
+                bus.Invoking(b => b.Start()).Should().Throw<BusConfigurationException>();
             }
         }
 
@@ -214,7 +214,7 @@ namespace Contour.RabbitMq.Tests
                 var factory = new BusFactory();
 
                 factory.Invoking(b => b.Create(cfg => cfg.Route(MessageLabel.Empty)))
-                    .ShouldThrow<BusConfigurationException>();
+                    .Should().Throw<BusConfigurationException>();
             }
         }
 
@@ -254,7 +254,7 @@ namespace Contour.RabbitMq.Tests
                 configuration.Route("label");
 
                 Action validate = () => configuration.Validate();
-                validate.ShouldNotThrow("Connection string may not be specified");
+                validate.Should().NotThrow("Connection string may not be specified");
             }
         }
 

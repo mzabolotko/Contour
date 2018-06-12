@@ -7,6 +7,7 @@
     using Contour.Caching;
 
     using NUnit.Framework;
+    using FluentAssertions.Extensions;
 
     /// <summary>
     /// The expires specs.

@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Contour.Transport.RabbitMQ.Internal;
 using FluentAssertions;
+using FluentAssertions.Extensions;
 using Moq;
 using NUnit.Framework;
 // ReSharper disable InconsistentNaming

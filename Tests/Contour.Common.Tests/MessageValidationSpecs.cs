@@ -101,7 +101,7 @@
                 var payload = new Boo { Num = 3, Str = "this" };
 
                 registry.Invoking(r => r.Validate(new Message<Boo>("label".ToMessageLabel(), payload))).
-                    ShouldThrow<MessageValidationException>();
+                    Should().Throw<MessageValidationException>();
             }
 
             #endregion
@@ -135,7 +135,7 @@
                 var payload = new Boo { Num = 3, Str = "this" };
 
                 registry.Invoking(r => r.Validate(new Message<Boo>("label".ToMessageLabel(), payload))).
-                    ShouldNotThrow();
+                    Should().NotThrow();
 
                 stubValidator.Verify(v => v.Validate(It.IsAny<IMessage>()), Times.Once);
             }
@@ -161,7 +161,7 @@
                 var validationResult = new ValidationResult(new[] { new BrokenRule("Something is broken") });
 
                 validationResult.Invoking(r => r.ThrowIfBroken()).
-                    ShouldThrow<MessageValidationException>();
+                    Should().Throw<MessageValidationException>();
             }
 
             #endregion
@@ -184,7 +184,7 @@
             {
                 ValidationResult validationResult = ValidationResult.Valid;
                 validationResult.Invoking(r => r.ThrowIfBroken()).
-                    ShouldNotThrow();
+                    Should().NotThrow();
             }
 
             #endregion

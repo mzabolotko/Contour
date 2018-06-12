@@ -11,6 +11,7 @@ namespace Contour.Common.Tests
     using Contour.Helpers;
 
     using NUnit.Framework;
+    using FluentAssertions.Extensions;
 
     /// <summary>
     /// The memory cache specs.
@@ -57,7 +58,7 @@ namespace Contour.Common.Tests
                 Maybe<Boo> value = null;
 
                 cacheProvider.Invoking(c => { value = c.Find<Boo>("key"); }).
-                    ShouldNotThrow();
+                    Should().NotThrow();
                 value.HasValue.Should().
                     BeFalse();
             }
@@ -141,7 +142,7 @@ namespace Contour.Common.Tests
                 var cacheProvider = new MemoryCacheProvider();
 
                 cacheProvider.Invoking(c => c.Get<Boo>("key")).
-                    ShouldThrow<InvalidOperationException>();
+                    Should().Throw<InvalidOperationException>();
             }
 
             #endregion
