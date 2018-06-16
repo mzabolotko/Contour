@@ -4,5 +4,4 @@ RabbitMQ.Client
 Newtonsoft.Json
 FluentAssertions
 Moq
-Ninject
 NUnit

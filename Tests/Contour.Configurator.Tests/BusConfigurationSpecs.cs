@@ -21,7 +21,7 @@ namespace Contour.Configurator.Tests
 
     using Moq;
 
-    using Ninject;
+    //using Ninject;
 
     using NUnit.Framework;
     using Contour.Testing;
@@ -287,6 +287,33 @@ namespace Contour.Configurator.Tests
             }
         }
 
+        internal class ServiceLocator
+        {
+            private readonly Dictionary<Type, Dictionary<string, Func<ServiceLocator, object>>> creators = new Dictionary<Type, Dictionary<string, Func<ServiceLocator, object>>>();
+
+            public void Add(Type type, string name, Func<ServiceLocator, object> creator)
+            {
+                if (!this.creators.ContainsKey(type))
+                {
+                    this.creators[type] = new Dictionary<string, Func<ServiceLocator, object>>();
+                }
+                this.creators[type][name] = creator;
+            }
+
+            public object Get(Type type, string name)
+            {
+                if (this.creators.ContainsKey(type))
+                {
+                    if (this.creators[type].ContainsKey(name))
+                    {
+                        return this.creators[type][name](this);
+                    }
+                }
+                return null;
+            }
+
+        }
+
         /// <summary>
         /// The when_configuring_endpoint_with_lifecycle_handler.
         /// </summary>
@@ -313,12 +340,13 @@ namespace Contour.Configurator.Tests
 
                 var handler = new Mock<IBusLifecycleHandler>();
 
-                IKernel kernel = new StandardKernel();
-                kernel.Bind<IBusLifecycleHandler>().
-                    ToConstant(handler.Object).
-                    Named("ProducerHandler");
+                var serviceLocator = new ServiceLocator();
+                serviceLocator.Add(
+                        typeof(IBusLifecycleHandler),
+                        "ProducerHandler",
+                        sc => handler.Object);
 
-                DependencyResolverFunc dependencyResolver = (name, type) => kernel.Get(type, name);
+                DependencyResolverFunc dependencyResolver = (name, type) => serviceLocator.Get(type, name);
 
                 IBus producer = this.StartBus(
                     "producer", 
@@ -380,27 +408,31 @@ namespace Contour.Configurator.Tests
                 BusDependentHandler.Reset();
                 BusDependentTransformer.Reset();
 
-                IKernel kernel = new StandardKernel();
-                kernel.Bind<IConsumerOf<BooMessage>>().
-                    To<BusDependentHandler>().
-                    InTransientScope().
-                    Named("BooHandler");
-
-                kernel.Bind<IMessageOperator>().To<BusDependentTransformer>();
-
-                kernel.Bind<IConsumerOf<BooMessage>>().To<OperatorConsumerOf<BooMessage>>()
-                    .InTransientScope()
-                    .Named("BooTransformer");
-
-                DependencyResolverFunc dependencyResolver = (name, type) => kernel.Get(type, name);
+                var serviceLocator = new ServiceLocator();
+                DependencyResolverFunc dependencyResolver = (name, type) => serviceLocator.Get(type, name);
 
                 IBus consumer = this.StartBus(
-                    "consumer", 
+                    "consumer",
                     cfg =>
-                        {
-                            var section = new XmlEndpointsSection(consumerConfig);
-                            new AppConfigConfigurator(section, dependencyResolver).Configure("consumer", cfg);
-                        });
+                    {
+                        var section = new XmlEndpointsSection(consumerConfig);
+                        new AppConfigConfigurator(section, dependencyResolver).Configure("consumer", cfg);
+                    });
+
+                serviceLocator.Add(
+                    typeof(IConsumerOf<BooMessage>),
+                    "BooHandler",
+                    sc => new BusDependentHandler((IBus)sc.Get(typeof(IBus), "consumer")));
+
+                serviceLocator.Add(
+                    typeof(IMessageOperator),
+                    "IMessageOperator",
+                    sc => new BusDependentTransformer((IBus)sc.Get(typeof(IBus), "consumer")));
+
+                serviceLocator.Add(
+                    typeof(IConsumerOf<BooMessage>),
+                    "BooTransformer",
+                    sc => new OperatorConsumerOf<BooMessage>((IMessageOperator) sc.Get(typeof(IMessageOperator), "IMessageOperator")));
 
                 IBus producer = this.StartBus(
                     "producer", 
@@ -409,8 +441,6 @@ namespace Contour.Configurator.Tests
                             var section = new XmlEndpointsSection(producerConfig);
                             new AppConfigConfigurator(section, dependencyResolver).Configure("producer", cfg);
                         });
-
-                kernel.Bind<IBus>().ToConstant(consumer);
 
                 producer.Emit("msg.a", new { Num = 13 });
                 producer.Emit("msg.a", new { Num = 13 });
@@ -423,11 +453,8 @@ namespace Contour.Configurator.Tests
                 producer.Emit("msg.b", new { Num = 13 });
                 producer.Emit("msg.b", new { Num = 13 });
 
-                BusDependentTransformer.WaitEvent.Wait(5.Seconds()).
-                    Should().
-                    BeTrue();
-                BusDependentTransformer.BuildCount.Should().
-                    Be(3);
+                BusDependentTransformer.WaitEvent.Wait(5.Seconds()).Should().BeTrue();
+                BusDependentTransformer.BuildCount.Should().Be(3);
             }
         }
 
@@ -471,26 +498,36 @@ namespace Contour.Configurator.Tests
                 BusDependentHandler.Reset();
                 BusDependentTransformer.Reset();
 
-                IKernel kernel = new StandardKernel();
-                kernel.Bind<IConsumerOf<BooMessage>>().
-                    To<BusDependentHandler>().
-                    InTransientScope().
-                    Named("BooHandler");
-                kernel.Bind<IMessageOperator>().To<BusDependentTransformer>();
-
-                kernel.Bind<IConsumerOf<BooMessage>>().To<OperatorConsumerOf<BooMessage>>()
-                    .InTransientScope()
-                    .Named("BooTransformer");
-
-                DependencyResolverFunc dependencyResolver = (name, type) => kernel.Get(type, name);
+                var serviceLocator = new ServiceLocator();
+                DependencyResolverFunc dependencyResolver = (name, type) => serviceLocator.Get(type, name);
 
                 IBus consumer = this.StartBus(
-                    "consumer", 
+                    "consumer",
                     cfg =>
-                        {
-                            var section = new XmlEndpointsSection(consumerConfig);
-                            new AppConfigConfigurator(section, dependencyResolver).Configure("consumer", cfg);
-                        });
+                    {
+                        var section = new XmlEndpointsSection(consumerConfig);
+                        new AppConfigConfigurator(section, dependencyResolver).Configure("consumer", cfg);
+                    });
+
+                serviceLocator.Add(
+                        typeof(IBus),
+                        "consumer",
+                        sc => consumer);
+
+                serviceLocator.Add(
+                    typeof(IConsumerOf<BooMessage>),
+                    "BooHandler",
+                    sc => new BusDependentHandler((IBus)sc.Get(typeof(IBus), "consumer")));
+
+                serviceLocator.Add(
+                    typeof(IMessageOperator),
+                    "IMessageOperator",
+                    sc => new BusDependentTransformer((IBus)sc.Get(typeof(IBus), "consumer")));
+
+                serviceLocator.Add(
+                    typeof(IConsumerOf<BooMessage>),
+                    "BooTransformer",
+                    sc => new OperatorConsumerOf<BooMessage>((IMessageOperator)sc.Get(typeof(IMessageOperator), "IMessageOperator")));
 
                 IBus producer = this.StartBus(
                     "producer", 
@@ -499,9 +536,6 @@ namespace Contour.Configurator.Tests
                             var section = new XmlEndpointsSection(producerConfig);
                             new AppConfigConfigurator(section, dependencyResolver).Configure("producer", cfg);
                         });
-
-                kernel.Bind<IBus>().
-                    ToConstant(consumer);
 
                 producer.Emit("msg.a", new { Num = 13 });
                 producer.Emit("msg.a", new { Num = 13 });
@@ -562,12 +596,12 @@ namespace Contour.Configurator.Tests
 
                 var handler = new ConcreteHandlerOf<BooMessage>();
 
-                IKernel kernel = new StandardKernel();
-                kernel.Bind<IConsumerOf<BooMessage>>().
-                    ToConstant(handler).
-                    Named("BooHandler");
+                var serviceLocator = new ServiceLocator();
 
-                DependencyResolverFunc dependencyResolver = (name, type) => kernel.Get(type, name);
+                
+                serviceLocator.Add(typeof(IConsumerOf<BooMessage>), "BooHandler", sc => handler);
+
+                DependencyResolverFunc dependencyResolver = (name, type) => serviceLocator.Get(type, name);
 
                 this.StartBus(
                     "consumer", 
@@ -627,12 +661,11 @@ namespace Contour.Configurator.Tests
 
                 var handler = new ConcreteHandlerOf<ExpandoObject>();
 
-                IKernel kernel = new StandardKernel();
-                kernel.Bind<IConsumerOf<ExpandoObject>>().
-                    ToConstant(handler).
-                    Named("DynamicHandler");
+                var serviceLocator = new ServiceLocator();
 
-                DependencyResolverFunc dependencyResolver = (name, type) => kernel.Get(type, name);
+                serviceLocator.Add(typeof(IConsumerOf<ExpandoObject>), "DynamicHandler", sc => handler);
+
+                DependencyResolverFunc dependencyResolver = (name, type) => serviceLocator.Get(type, name);
 
                 this.StartBus(
                     "consumer", 
@@ -700,25 +733,21 @@ namespace Contour.Configurator.Tests
 
                 var handler = new ConcreteHandlerOf<BooMessage>();
 
-                IKernel kernel = new StandardKernel();
-                kernel.Bind<IConsumerOf<BooMessage>>()
-                    .ToConstant(handler)
-                    .InSingletonScope()
-                    .Named("BooHandler");
-                kernel.Bind<IMessageValidator>()
-                    .To<BooPayloadValidator>()
-                    .InSingletonScope();
-                kernel.Bind<IMessageValidator>()
-                    .To<FooPayloadValidator>()
-                    .InSingletonScope();
+                var serviceLocator = new ServiceLocator();
+                
+                serviceLocator.Add(typeof(IConsumerOf<BooMessage>), "BooHandler", sc => handler);
+                serviceLocator.Add(typeof(IMessageValidator), "BooMessageValidator", sc => new BooPayloadValidator());
+                serviceLocator.Add(typeof(IMessageValidator), "FooMessageValidator", sc => new FooPayloadValidator());
+                serviceLocator.Add(
+                    typeof(MessageValidatorGroup), 
+                    "ValidatorGroup", 
+                    sc => new MessageValidatorGroup(
+                        new List<IMessageValidator> {
+                            (IMessageValidator)sc.Get(typeof(IMessageValidator), "BooMessageValidator"),
+                            (IMessageValidator)sc.Get(typeof(IMessageValidator), "FooMessageValidator")
+                        }));
 
-                kernel.Bind<MessageValidatorGroup>()
-                    .ToSelf()
-                    .InSingletonScope()
-                    .Named("ValidatorGroup")
-                    .WithConstructorArgument("validators", ctx => ctx.Kernel.GetAll<IMessageValidator>());
-
-                DependencyResolverFunc dependencyResolver = (name, type) => kernel.Get(type, name);
+                DependencyResolverFunc dependencyResolver = (name, type) => serviceLocator.Get(type, name);
 
                 this.StartBus(
                     "consumer", 
@@ -781,17 +810,11 @@ namespace Contour.Configurator.Tests
 
                 var handler = new ConcreteHandlerOf<BooMessage>();
 
-                IKernel kernel = new StandardKernel();
-                kernel.Bind<IConsumerOf<BooMessage>>()
-                    .ToConstant(handler)
-                    .InSingletonScope()
-                    .Named("BooHandler");
-                kernel.Bind<IMessageValidatorOf<BooMessage>>()
-                    .To<BooPayloadValidator>()
-                    .InSingletonScope()
-                    .Named("BooValidator");
+                var serviceLocator = new ServiceLocator();
+                serviceLocator.Add(typeof(IConsumerOf<BooMessage>), "BooHandler", sc => handler);
+                serviceLocator.Add(typeof(IMessageValidatorOf<BooMessage>), "BooValidator", sc => new BooPayloadValidator());
 
-                DependencyResolverFunc dependencyResolver = (name, type) => kernel.Get(type, name);
+                DependencyResolverFunc dependencyResolver = (name, type) => serviceLocator.Get(type, name);
 
                 this.StartBus(
                     "consumer", 
@@ -853,16 +876,12 @@ namespace Contour.Configurator.Tests
                         this.VhostName);
 
                 var handler = new ConcreteTransformerOf<BooMessage>();
+                var serviceLocator = new ServiceLocator();
+                serviceLocator.Add(typeof(IConsumerOf<BooMessage>),
+                    "BooTransformer", 
+                    sc => new OperatorConsumerOf<BooMessage>(handler));
 
-                IKernel kernel = new StandardKernel();
-                kernel.Bind<IMessageOperator>().ToConstant(handler);
-
-                kernel.Bind<IConsumerOf<BooMessage>>().To<OperatorConsumerOf<BooMessage>>()
-                    .InTransientScope()
-                    .Named("BooTransformer");
-
-
-                DependencyResolverFunc dependencyResolver = (name, type) => kernel.Get(type, name);
+                object dependencyResolver(string name, Type type) => serviceLocator.Get(type, name);
 
                 this.StartBus(
                     "consumer", 
@@ -882,9 +901,7 @@ namespace Contour.Configurator.Tests
 
                 producer.Emit("msg.a", new { Num = 13 });
 
-                handler.Received.WaitOne(5.Seconds())
-                    .Should()
-                    .BeTrue();
+                handler.Received.WaitOne(5.Seconds()).Should().BeTrue();
             }
         }
 

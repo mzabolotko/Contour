@@ -1,5 +1,6 @@
 ﻿## 2.0.0-rc2
 - Changes:
+    + Removed Ninject dependency.
     + Updated Common.Logging and Fluent Assertions.
 
 ## 2.0.0-rc2
