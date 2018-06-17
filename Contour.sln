@@ -7,8 +7,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{164DE6
 		paket.dependencies = paket.dependencies
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contour", "Sources\Contour\Contour.csproj", "{BB96B5C3-5679-471E-A7B4-50C31D34AD05}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sources", "Sources", "{42F4CDA7-FF32-45B7-A516-30FC94845340}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{568D0EC3-36F1-40C3-9BBD-871AD5A1924A}"
@@ -25,12 +23,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
 		appveyor.yml = appveyor.yml
+		build.fsx = build.fsx
 		fake.cmd = fake.cmd
 		LICENSE.md = LICENSE.md
 		paket.dependencies = paket.dependencies
 		README.md = README.md
 		RELEASE_NOTES.md = RELEASE_NOTES.md
 	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contour", "Sources\Contour\Contour.csproj", "{CA81CC00-B276-4DD4-95D9-598485766D8E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -40,12 +41,6 @@ Global
 		Release|X64 = Release|X64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{BB96B5C3-5679-471E-A7B4-50C31D34AD05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BB96B5C3-5679-471E-A7B4-50C31D34AD05}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BB96B5C3-5679-471E-A7B4-50C31D34AD05}.Debug|X64.ActiveCfg = Debug|Any CPU
-		{BB96B5C3-5679-471E-A7B4-50C31D34AD05}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BB96B5C3-5679-471E-A7B4-50C31D34AD05}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BB96B5C3-5679-471E-A7B4-50C31D34AD05}.Release|X64.ActiveCfg = Release|Any CPU
 		{E47EE610-DAC2-4A18-B11A-E8CE32B86A20}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E47EE610-DAC2-4A18-B11A-E8CE32B86A20}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E47EE610-DAC2-4A18-B11A-E8CE32B86A20}.Debug|X64.ActiveCfg = Debug|Any CPU
@@ -70,16 +65,24 @@ Global
 		{B3F3D491-5C15-4C21-A155-EA34896253A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B3F3D491-5C15-4C21-A155-EA34896253A6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B3F3D491-5C15-4C21-A155-EA34896253A6}.Release|X64.ActiveCfg = Release|Any CPU
+		{CA81CC00-B276-4DD4-95D9-598485766D8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA81CC00-B276-4DD4-95D9-598485766D8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA81CC00-B276-4DD4-95D9-598485766D8E}.Debug|X64.ActiveCfg = Debug|Any CPU
+		{CA81CC00-B276-4DD4-95D9-598485766D8E}.Debug|X64.Build.0 = Debug|Any CPU
+		{CA81CC00-B276-4DD4-95D9-598485766D8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA81CC00-B276-4DD4-95D9-598485766D8E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA81CC00-B276-4DD4-95D9-598485766D8E}.Release|X64.ActiveCfg = Release|Any CPU
+		{CA81CC00-B276-4DD4-95D9-598485766D8E}.Release|X64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{BB96B5C3-5679-471E-A7B4-50C31D34AD05} = {42F4CDA7-FF32-45B7-A516-30FC94845340}
 		{E47EE610-DAC2-4A18-B11A-E8CE32B86A20} = {568D0EC3-36F1-40C3-9BBD-871AD5A1924A}
 		{0A47BD78-3FD2-45A9-A991-F7140CE6357B} = {568D0EC3-36F1-40C3-9BBD-871AD5A1924A}
 		{64CEECA7-25C5-4ADA-A977-CE57846E1472} = {568D0EC3-36F1-40C3-9BBD-871AD5A1924A}
 		{B3F3D491-5C15-4C21-A155-EA34896253A6} = {568D0EC3-36F1-40C3-9BBD-871AD5A1924A}
+		{CA81CC00-B276-4DD4-95D9-598485766D8E} = {42F4CDA7-FF32-45B7-A516-30FC94845340}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {62D56995-0119-4695-845E-362B8A735671}

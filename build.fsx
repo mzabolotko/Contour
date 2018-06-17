@@ -1,7 +1,7 @@
 ﻿#r "paket:
 nuget Fake.IO.FileSystem
 nuget Fake.DotNet.AssemblyInfoFile
-nuget Fake.DotNet.MSBuild
+nuget Fake.DotNet.Cli
 nuget Fake.DotNet.Testing.NUnit
 nuget Fake.DotNet.Paket
 nuget Fake.Core.Target
@@ -29,50 +29,38 @@ let tags = "rabbitmq client servicebus"
 
 let release = ReleaseNotes.parse (System.IO.File.ReadLines "RELEASE_NOTES.md")
 
-let buildDir = @"build\"
-let nugetDir = @"nuget\"
+let tempDir = "temp"
 
-let projects =
-    !! "Sources/**/*.csproj"
+let solution = "Contour.sln"
 
 let tests =
     !! "Tests/**/*.csproj"
 
 Target.create "CleanUp" (fun _ ->
-    Shell.cleanDirs [ buildDir ]
-)
-
-Target.create "BuildVersion" (fun _ ->
-    let buildVersion = sprintf "%s-build%s" release.NugetVersion BuildServer.appVeyorBuildVersion
-    Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" buildVersion) |> ignore
+    Shell.cleanDirs [ tempDir ]
 )
 
 Target.create "AssemblyInfo" (fun _ ->
-    printfn "%A" release
-    let info =
-        [ AssemblyInfo.Title project
-          AssemblyInfo.Company (authors |> String.concat ",")
-          AssemblyInfo.Product project
-          AssemblyInfo.Description summary
-          AssemblyInfo.Version release.AssemblyVersion
-          AssemblyInfo.FileVersion release.AssemblyVersion
-          AssemblyInfo.InformationalVersion release.NugetVersion
-          AssemblyInfo.Copyright license ]
-    AssemblyInfoFile.createCSharp <| "./Sources/" @@ project @@ "/Properties/AssemblyInfo.cs" <| info
+    if not BuildServer.isLocalBuild then
+        let info =
+            [ AssemblyInfo.Title project
+              AssemblyInfo.Company (authors |> String.concat ",")
+              AssemblyInfo.Product project
+              AssemblyInfo.Description summary
+              AssemblyInfo.Version release.AssemblyVersion
+              AssemblyInfo.FileVersion release.AssemblyVersion
+              AssemblyInfo.InformationalVersion release.NugetVersion
+              AssemblyInfo.Copyright license ]
+        AssemblyInfoFile.createCSharp <| "./Sources/" @@ project @@ "/Properties/AssemblyInfo.cs" <| info
 )
 
 Target.create "Build" (fun _ ->
-    projects
-    |> MSBuild.runRelease id "" "Rebuild"
-    |> Trace.logItems "Build Target Output: "
+    solution |> DotNet.build (fun p -> { p with Configuration = DotNet.BuildConfiguration.Release })
 )
 
 Target.create "RunUnitTests" (fun _ ->
-    tests
-    |> MSBuild.runDebug id "" "Rebuild"
-    |> Trace.logItems "Build Target Output: "
 
-    !! "Tests/**/bin/Debug/*Common.Tests.dll"
+    !! "Tests/**/bin/Release/*Common.Tests.dll"
     |> NUnit.Sequential.run (fun p ->
            { p with
                 DisableShadowCopy = false
@@ -81,11 +69,8 @@ Target.create "RunUnitTests" (fun _ ->
 )
 
 Target.create "RunAllTests" (fun _ ->
-    tests
-    |> MSBuild.runDebug id "" "Rebuild"
-    |> Trace.logItems "Build Target Output: "
 
-    !! "Tests/**/bin/Debug/*.Tests.dll"
+    !! "Tests/**/bin/Release/*.Tests.dll"
     |> NUnit.Sequential.run (fun p ->
            { p with
                 DisableShadowCopy = false
@@ -95,18 +80,17 @@ Target.create "RunAllTests" (fun _ ->
 
 Target.create "BuildPacket" (fun _ ->
     Paket.pack (fun p ->
-                    { p with
-                        Version = release.NugetVersion })
+                   { p with
+                       Version = release.NugetVersion })
 )
 
 Target.create "Default" ignore
 
 "CleanUp"
-    =?> ("BuildVersion", (not BuildServer.isLocalBuild))
     ==> "AssemblyInfo"
     ==> "Build"
     ==> "RunUnitTests"
-    =?> ("RunAlltests", BuildServer.isLocalBuild)
+    ==> "RunAllTests"
     ==> "BuildPacket"
     ==> "Default"
 

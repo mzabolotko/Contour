@@ -1,14 +1,14 @@
-﻿namespace Contour.Common.Tests
+﻿using System;
+
+using Contour;
+
+using FluentAssertions;
+
+using NUnit.Framework;
+using FluentAssertions.Extensions;
+
+namespace Contour.Common.Tests
 {
-    using System;
-
-    using FluentAssertions;
-
-    using Contour.Caching;
-
-    using NUnit.Framework;
-    using FluentAssertions.Extensions;
-
     /// <summary>
     /// The expires specs.
     /// </summary>

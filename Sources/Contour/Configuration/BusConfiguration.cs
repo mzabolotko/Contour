@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using Common.Logging;
-using Contour.Caching;
 using Contour.Configurator;
 using Contour.Filters;
 using Contour.Helpers;
@@ -450,19 +448,6 @@ namespace Contour.Configuration
             Logger.Trace("Setting connection reuse");
             this.EndpointOptions.ReuseConnection = reuse;
             Logger.Debug("Connection reuse is set");
-        }
-
-        /// <summary>
-        /// The set connection string name.
-        /// </summary>
-        /// <param name="connectionStringName">
-        /// The connection string name.
-        /// </param>
-        public void SetConnectionStringName(string connectionStringName)
-        {
-            string connectionString = ConfigurationManager.ConnectionStrings[connectionStringName].ConnectionString;
-
-            this.SetConnectionString(connectionString);
         }
 
         /// <summary>

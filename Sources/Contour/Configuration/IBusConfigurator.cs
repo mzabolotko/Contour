@@ -226,14 +226,6 @@ namespace Contour.Configuration
         void ReuseConnection(bool reuse = true);
 
         /// <summary>
-        /// Устанавливает строку соединения по имени из конфигурационного файла.
-        /// </summary>
-        /// <param name="connectionStringName">
-        /// Имя строки соединения.
-        /// </param>
-        void SetConnectionStringName(string connectionStringName);
-
-        /// <summary>
         /// Устанавливает адрес конечной точки приложения.
         /// </summary>
         /// <param name="address">
