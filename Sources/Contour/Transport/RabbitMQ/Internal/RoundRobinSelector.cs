@@ -1,17 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using Common.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Contour.Transport.RabbitMQ.Internal
 {
     internal class RoundRobinSelector : IProducerSelector
     {
-        private static readonly ILog Logger = LogManager.GetLogger<RoundRobinSelector>();
         private readonly object syncRoot = new object();
         private readonly IEnumerable<IProducer> producers;
+        private readonly ILogger<RoundRobinSelector> logger;
         private IEnumerator<IProducer> enumerator;
 
-        public RoundRobinSelector(IEnumerable<IProducer> items)
+        public RoundRobinSelector(IEnumerable<IProducer> items, ILogger<RoundRobinSelector> logger)
         {
             if (items == null)
             {
@@ -19,6 +19,7 @@ namespace Contour.Transport.RabbitMQ.Internal
             }
 
             this.producers = items;
+            this.logger = logger;
             this.enumerator = this.producers.GetEnumerator();
         }
 
@@ -50,7 +51,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                         throw new Exception("Unable to take the next producer because no available producers left");
                     }
 
-                    Logger.Trace("Starting the next round of producers' selection");
+                    this.logger.LogTrace("Starting the next round of producers' selection");
                     freshCycle = true;
 
                     this.enumerator = this.producers.GetEnumerator();

@@ -22,6 +22,11 @@ namespace Contour.Transport.RabbitMQ.Internal
 
         public static IProducerSelectorBuilder ProducerSelectorBuilder = new DefaultProducerSelectorBuilder();
 
+        public static IUnhandledDeliveryStrategyBuilder UnhandledDeliveryStrategyBuilder = new DefaultUnhandledDeliveryStrategyBuilder();
+
+        public static IFailedDeliveryStrategyBuilder FailedDeliveryStrategyBuilder = new DefaultFailedDeliveryStrategyBuilder();
+
+
         /// <summary>
         /// The route resolver builder impl.
         /// </summary>

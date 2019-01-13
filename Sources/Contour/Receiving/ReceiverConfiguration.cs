@@ -57,24 +57,11 @@ namespace Contour.Receiving
             return new TypedReceiverConfigurationDecorator<T>(this);
         }
 
-        /// <summary>
-        /// Регистрирует стратегию обработки сообщений, получение которых завершилось провалом.
-        /// </summary>
-        /// <param name="failedDeliveryStrategy">Стратегия обработки сообщений, получение которых завершилось провалом.</param>
-        /// <returns>Конфигуратор получателя с установленной стратегией обработки сообщений.</returns>
-        public IReceiverConfigurator OnFailed(IFailedDeliveryStrategy failedDeliveryStrategy)
+        public IReceiverConfigurator OnFailed(IFailedDeliveryStrategyBuilder builder)
         {
-            this.Options.FailedDeliveryStrategy = failedDeliveryStrategy.Maybe();
+            this.Options.FailedDeliveryStrategyBuilder = builder;
 
             return this;
-        }
-
-        /// <summary>Регистрирует обработчик сообщений, получение которых завершилось провалом.</summary>
-        /// <param name="failedDeliveryHandler">Обработчик сообщений, получение которых завершилось провалом.</param>
-        /// <returns>Конфигуратор получателя с установленной стратегией обработки сообщений</returns>
-        public IReceiverConfigurator OnFailed(Action<IFailedConsumingContext> failedDeliveryHandler)
-        {
-            return this.OnFailed(new LambdaFailedDeliveryStrategy(failedDeliveryHandler));
         }
 
         /// <summary>Регистрирует обработчик входящего сообщения.</summary>

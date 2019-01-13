@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Common.Logging;
 using Contour.Configurator;
 using Contour.Filters;
 using Contour.Helpers;
@@ -9,6 +8,7 @@ using Contour.Receiving;
 using Contour.Sending;
 using Contour.Serialization;
 using Contour.Validation;
+using Microsoft.Extensions.Logging;
 
 namespace Contour.Configuration
 {
@@ -17,11 +17,6 @@ namespace Contour.Configuration
     /// </summary>
     internal class BusConfiguration : IBusConfigurator, IBusConfiguration
     {
-        /// <summary>
-        /// The logger.
-        /// </summary>
-        private static readonly ILog Logger = LogManager.GetCurrentClassLogger();
-
         /// <summary>
         /// The _filters.
         /// </summary>
@@ -52,8 +47,7 @@ namespace Contour.Configuration
         /// </summary>
         public BusConfiguration()
         {
-            Logger.Trace(m => m("Вызван конструктор BusConfiguration"));
-
+            this.LoggerFactoryProvider = () => new LoggerFactory();
             this.EndpointOptions = new EndpointOptions();
 
             this.SenderDefaults = new SenderOptions(this.EndpointOptions);
@@ -165,6 +159,8 @@ namespace Contour.Configuration
                 return this.validatorRegistry;
             }
         }
+
+        public Func<ILoggerFactory> LoggerFactoryProvider { get; private set; }
 
         /// <summary>
         /// The build bus using.
@@ -286,50 +282,6 @@ namespace Contour.Configuration
         }
 
         /// <summary>
-        /// The on failed.
-        /// </summary>
-        /// <param name="failedDeliveryStrategy">
-        /// The failed delivery strategy.
-        /// </param>
-        public void OnFailed(IFailedDeliveryStrategy failedDeliveryStrategy)
-        {
-            this.ReceiverDefaults.FailedDeliveryStrategy = failedDeliveryStrategy.Maybe();
-        }
-
-        /// <summary>
-        /// The on failed.
-        /// </summary>
-        /// <param name="failedDeliveryHandler">
-        /// The failed delivery handler.
-        /// </param>
-        public void OnFailed(Action<IFailedConsumingContext> failedDeliveryHandler)
-        {
-            this.OnFailed(new LambdaFailedDeliveryStrategy(failedDeliveryHandler));
-        }
-
-        /// <summary>
-        /// The on unhandled.
-        /// </summary>
-        /// <param name="unhandledDeliveryStrategy">
-        /// The unhandled delivery strategy.
-        /// </param>
-        public void OnUnhandled(IUnhandledDeliveryStrategy unhandledDeliveryStrategy)
-        {
-            this.ReceiverDefaults.UnhandledDeliveryStrategy = unhandledDeliveryStrategy.Maybe();
-        }
-
-        /// <summary>
-        /// The on unhandled.
-        /// </summary>
-        /// <param name="unhandledDeliveryHandler">
-        /// The unhandled delivery handler.
-        /// </param>
-        public void OnUnhandled(Action<IFaultedConsumingContext> unhandledDeliveryHandler)
-        {
-            this.OnUnhandled(new LambdaUnhandledDeliveryStrategy(unhandledDeliveryHandler));
-        }
-
-        /// <summary>
         /// The register filter.
         /// </summary>
         /// <param name="filter">
@@ -429,12 +381,8 @@ namespace Contour.Configuration
         /// </param>
         public void SetConnectionString(string connectionString)
         {
-            Logger.Trace(m => m("Установка строки подключения к брокеру RabbitMQ [{0}].", connectionString));
-
             this.ConnectionString = connectionString;
             this.EndpointOptions.ConnectionString = connectionString;
-
-            Logger.Debug(m => m("Установлена строка подключения [{0}].", this.ConnectionString));
         }
 
         /// <summary>
@@ -445,9 +393,7 @@ namespace Contour.Configuration
         /// </param>
         public void ReuseConnection(bool reuse = true)
         {
-            Logger.Trace("Setting connection reuse");
             this.EndpointOptions.ReuseConnection = reuse;
-            Logger.Debug("Connection reuse is set");
         }
 
         /// <summary>
@@ -458,11 +404,7 @@ namespace Contour.Configuration
         /// </param>
         public void SetEndpoint(string address)
         {
-            Logger.Trace(m => m("Установка адреса конечной точки [{0}].", address));
-
             this.Endpoint = new Endpoint(address);
-
-            Logger.Debug(m => m("Установлен адрес конечной точки [{0}].", this.Endpoint));
         }
 
         /// <summary>
@@ -570,6 +512,16 @@ namespace Contour.Configuration
             this.EndpointOptions.ConnectionStringProvider = provider;
         }
 
+        public void UseUnhandledDeliveryStrategyBuilder(IUnhandledDeliveryStrategyBuilder builder)
+        {
+            this.ReceiverDefaults.UnhandledDeliveryStrategyBuilder = builder;
+        }
+
+        public void UseFailedDeliveryStrategyBuilder(IFailedDeliveryStrategyBuilder builder)
+        {
+            this.ReceiverDefaults.FailedDeliveryStrategyBuilder = builder;
+        }
+
         /// <summary>
         /// The validate.
         /// </summary>
@@ -577,8 +529,6 @@ namespace Contour.Configuration
         /// </exception>
         public void Validate()
         {
-            Logger.Trace(m => m("Вызван метод для валидации конфигурации. Строка соединия - [{0}], адрес конечной точки - [{1}], получаемые сообщения - [{2}], отправляемые сообщения - [{3}]", this.ConnectionString, this.Endpoint, this.ReceiverConfigurations != null ? string.Join(";", this.ReceiverConfigurations.Select(x => x.Label)) : "null", this.SenderConfigurations != null ? string.Join(";", this.SenderConfigurations.Select(x => x.Label)) : "null"));
-
             if (this.Serializer == null)
             {
                 throw new BusConfigurationException("PayloadConverter is not set.");
@@ -608,8 +558,6 @@ namespace Contour.Configuration
             {
                 consumer.Validate();
             }
-
-            Logger.Trace(m => m("Конец метода валидации конфигурации"));
         }
 
         /// <summary>
@@ -638,6 +586,11 @@ namespace Contour.Configuration
         private bool HasRegisteredProducerFor(MessageLabel label)
         {
             return this.SenderConfigurations.Any(c => c.Label.Equals(label));
+        }
+
+        public void UseLoggerFactoryProvider(Func<ILoggerFactory> loggerFactoryProvider)
+        {
+            this.LoggerFactoryProvider = loggerFactoryProvider;
         }
     }
 }

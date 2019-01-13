@@ -2,10 +2,11 @@
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
-using Common.Logging;
+using Microsoft.Extensions.Logging;
+using RabbitMQ.Client;
+
 using Contour.Helpers;
 using Contour.Sending;
-using RabbitMQ.Client;
 
 namespace Contour.Transport.RabbitMQ.Internal
 {
@@ -14,7 +15,7 @@ namespace Contour.Transport.RabbitMQ.Internal
     /// </summary>
     internal sealed class PublishConfirmationTracker : IPublishConfirmationTracker
     {
-        private readonly ILog logger; 
+        private readonly ILogger logger; 
         private readonly RabbitChannel channel;
         private readonly ConcurrentDictionary<ulong, TaskCompletionSource<object>> pending = new ConcurrentDictionary<ulong, TaskCompletionSource<object>>();
 
@@ -24,9 +25,9 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// <param name="channel">
         /// The channel.
         /// </param>
-        public PublishConfirmationTracker(RabbitChannel channel)
+        public PublishConfirmationTracker(RabbitChannel channel, ILoggerFactory loggerFactory)
         {
-            this.logger = LogManager.GetLogger($"{this.GetType().FullName}({this.GetHashCode()})");
+            this.logger = loggerFactory.CreateLogger($"{this.GetType().FullName}({this.GetHashCode()})");
             this.channel = channel;
             this.channel.Shutdown += this.OnChannelShutdown;
         }
@@ -130,7 +131,9 @@ namespace Contour.Transport.RabbitMQ.Internal
 
         private void OnChannelShutdown(IChannel sender, ShutdownEventArgs args)
         {
-            this.logger.Trace(m => m($"Message confirmation channel in connection [{this.channel.ConnectionId}] has been shut down, abandoning pending publish confirmations"));
+            this.logger.LogTrace(
+                "Message confirmation channel in connection [{ConnectionId}] has been shut down, abandoning pending publish confirmations", 
+                this.channel.ConnectionId);
 
             while (this.pending.Keys.Count > 0)
             {
@@ -138,7 +141,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 var sequenceNumber = this.pending.Keys.First();
                 if (this.pending.TryRemove(sequenceNumber, out tcs))
                 {
-                    this.logger.Trace(m => m($"A broker publish confirmation for message with sequence number [{sequenceNumber}] has not been received"));
+                    this.logger.LogTrace("A broker publish confirmation for message with sequence number [{SequenceNumber}] has not been received", sequenceNumber);
                     tcs.TrySetException(new UnconfirmedMessageException() { SequenceNumber = sequenceNumber });
                 }
             }

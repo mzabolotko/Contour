@@ -1,30 +1,25 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="AbstractReceiver.cs" company="">
-//   
-// </copyright>
-// <summary>
-//   The abstract receiver.
-// </summary>
-// --------------------------------------------------------------------------------------------------------------------
+﻿using Contour.Receiving.Consumers;
+using Microsoft.Extensions.Logging;
 
 namespace Contour.Receiving
 {
-    using Contour.Receiving.Consumers;
-
     /// <summary>
     /// The abstract receiver.
     /// </summary>
     internal abstract class AbstractReceiver : IReceiver
     {
+        protected readonly ILoggerFactory loggerFactory;
+
         /// <summary>
         /// Инициализирует новый экземпляр класса <see cref="AbstractReceiver"/>.
         /// </summary>
         /// <param name="configuration">
         /// The configuration.
         /// </param>
-        protected AbstractReceiver(IReceiverConfiguration configuration)
+        protected AbstractReceiver(IReceiverConfiguration configuration, ILoggerFactory loggerFactory)
         {
             this.Configuration = configuration;
+            this.loggerFactory = loggerFactory;
         }
 
         /// <summary>

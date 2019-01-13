@@ -2,12 +2,15 @@
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
-using Common.Logging;
+
+using Microsoft.Extensions.Logging;
+
 using Contour.Configuration;
 using Contour.Helpers.CodeContracts;
 using Contour.Receiving;
 using Contour.Receiving.Consumers;
 using Contour.Transport.RabbitMQ.Topology;
+
 
 namespace Contour.Transport.RabbitMQ.Internal
 {
@@ -16,7 +19,7 @@ namespace Contour.Transport.RabbitMQ.Internal
     /// </summary>
     internal class RabbitReceiver : AbstractReceiver
     {
-        private readonly ILog logger;
+        private readonly ILogger logger;
         private readonly RabbitBus bus;
         private readonly IConnectionPool<IRabbitConnection> connectionPool;
         private readonly ConcurrentQueue<IListener> listeners = new ConcurrentQueue<IListener>();
@@ -34,14 +37,14 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// <param name="connectionPool">
         /// The connection Pool.
         /// </param>
-        public RabbitReceiver(RabbitBus bus, IReceiverConfiguration configuration, IConnectionPool<IRabbitConnection> connectionPool)
-            : base(configuration)
+        public RabbitReceiver(RabbitBus bus, IReceiverConfiguration configuration, IConnectionPool<IRabbitConnection> connectionPool, ILoggerFactory loggerFactory)
+            : base(configuration, loggerFactory)
         {
             this.bus = bus;
             this.connectionPool = connectionPool;
             this.receiverOptions = (RabbitReceiverOptions)configuration.Options;
 
-            this.logger = LogManager.GetLogger($"{this.GetType().FullName}({this.bus.Endpoint}, {this.Configuration.Label})");
+            this.logger = this.loggerFactory.CreateLogger($"{this.GetType().FullName}({this.bus.Endpoint}, {this.Configuration.Label})");
         }
 
         public event EventHandler<ListenerCreatedEventArgs> ListenerCreated = (sender, args) => { };
@@ -82,7 +85,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </typeparam>
         public override void RegisterConsumer<T>(MessageLabel label, IConsumerOf<T> consumer)
         {
-            this.logger.Trace($"Registering consumer of [{typeof(T).Name}] in receiver of label [{label}]");
+            this.logger.LogTrace("Registering consumer of [{Consumer}] in receiver of label [{Label}]", typeof(T).Name, label);
 
             foreach (var listener in this.listeners)
             {
@@ -100,7 +103,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 return;
             }
 
-            this.logger.Trace(m => m("Starting receiver of [{0}].", this.Configuration.Label));
+            this.logger.LogTrace("Starting receiver of [{Label}].", this.Configuration.Label);
 
             this.StartListeners();
             this.IsStarted = true;
@@ -116,7 +119,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 return;
             }
 
-            this.logger.Trace(m => m("Stopping receiver of [{0}].", this.Configuration.Label));
+            this.logger.LogTrace("Stopping receiver of [{Label}].", this.Configuration.Label);
 
             this.StopListeners();
             this.IsStarted = false;
@@ -161,7 +164,7 @@ namespace Contour.Transport.RabbitMQ.Internal
 
                 compareAndThrow(o => o.IsAcceptRequired(), "AcceptIsRequired");
                 compareAndThrow(o => o.GetParallelismLevel(), "ParallelismLevel");
-                compareAndThrow(o => o.GetFailedDeliveryStrategy(), "FailedDeliveryStrategy");
+                compareAndThrow(o => o.GetFailedDeliveryStrategyBuilder(), "FailedDeliveryStrategyBuilder");
                 compareAndThrow(o => o.GetQoS(), "QoS");
             }
         }
@@ -180,7 +183,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </summary>
         private void StartListeners()
         {
-            this.logger.Trace(m => m("Starting listeners in receiver of [{0}]", this.Configuration.Label));
+            this.logger.LogTrace("Starting listeners in receiver of [{Label}]", this.Configuration.Label);
             this.Configure();
 
             foreach (var listener in this.listeners)
@@ -199,7 +202,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </summary>
         private void StopListeners()
         {
-            this.logger.Trace(m => m("Stopping listeners in receiver of [{0}]", this.Configuration.Label));
+            this.logger.LogTrace("Stopping listeners in receiver of [{Label}]", this.Configuration.Label);
 
             IListener listener;
             while (this.listeners.Any() && this.listeners.TryDequeue(out listener))
@@ -211,8 +214,12 @@ namespace Contour.Transport.RabbitMQ.Internal
                 }
                 catch (Exception ex)
                 {
-                    this.logger.Error(
-                        $"Failed to stop a listener [{listener}] in receiver of [{this.Configuration.Label}] due to {ex.Message}");
+                    this.logger.LogError(
+                        ex,
+                        "Failed to stop a listener [{Listener}] in receiver of [{Label}] due to {Message}",
+                        listener,
+                        this.Configuration.Label,
+                        ex.Message);
                 }
             }
         }
@@ -222,8 +229,10 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </summary>
         private void BuildListeners()
         {   
-            this.logger.Trace(
-                $"Building listeners of [{this.Configuration.Label}]:\r\n\t{string.Join("\r\n\t", this.receiverOptions.RabbitConnectionString.Select(url => $"Listener({this.Configuration.Label}): URL\t=>\t{url}"))}");
+            this.logger.LogTrace(
+                "Building listeners of [{Label}]: {Urls}",
+                this.Configuration.Label,
+                string.Join(",", this.receiverOptions.RabbitConnectionString.Select(url => $"Listener({this.Configuration.Label}): URL => {url}")));
 
             foreach (var url in this.receiverOptions.RabbitConnectionString)
             {
@@ -262,7 +271,9 @@ namespace Contour.Transport.RabbitMQ.Internal
                 return;
             }
 
-            this.logger.Warn($"Listener [{sender.GetHashCode()}] has been stopped and will be reenlisted");
+            this.logger.LogWarning(
+                "Listener [{HashCode}] has been stopped and will be reenlisted",
+                sender.GetHashCode());
 
             while (true)
             {
@@ -271,7 +282,9 @@ namespace Contour.Transport.RabbitMQ.Internal
                 {
                     if (sender == delistedListener)
                     {
-                        this.logger.Trace($"Listener [{delistedListener.GetHashCode()}] has been delisted");
+                        this.logger.LogTrace(
+                            "Listener [{HashCode}] has been delisted",
+                            delistedListener.GetHashCode());
                         break;
                     }
 
@@ -287,7 +300,10 @@ namespace Contour.Transport.RabbitMQ.Internal
 
             var source = new CancellationTokenSource();
             var connection = this.connectionPool.Get(url, reuseConnection, source.Token);
-            this.logger.Trace($"Using connection [{connection.Id}] at URL=[{url}] to resolve a listener");
+            this.logger.LogTrace(
+                "Using connection [{ConnectionId}] at URL=[{Url}] to resolve a listener",
+                connection.Id,
+                url);
 
             using (var topologyBuilder = new TopologyBuilder(connection))
             {
@@ -303,7 +319,8 @@ namespace Contour.Transport.RabbitMQ.Internal
                     connection,
                     endpoint,
                     this.receiverOptions,
-                    this.bus.Configuration.ValidatorRegistry);
+                    this.bus.Configuration.ValidatorRegistry,
+                    this.loggerFactory);
 
                 return newListener;
             }

@@ -2,19 +2,18 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Common.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Contour.Transport.RabbitMQ.Internal
 {
     internal class FaultTolerantProducer : IFaultTolerantProducer
     {
-        private readonly ILog logger = LogManager.GetLogger<FaultTolerantProducer>();
         private readonly IProducerSelector selector;
         private readonly int attempts;
-
+        private readonly ILogger<FaultTolerantProducer> logger;
         private bool disposed;
 
-        public FaultTolerantProducer(IProducerSelector selector, int maxAttempts, int maxRetryDelay, int inactivityResetDelay)
+        public FaultTolerantProducer(IProducerSelector selector, int maxAttempts, int maxRetryDelay, int inactivityResetDelay, ILogger<FaultTolerantProducer> logger)
         {
             if (selector == null)
             {
@@ -23,6 +22,7 @@ namespace Contour.Transport.RabbitMQ.Internal
 
             this.selector = selector;
             this.attempts = maxAttempts;
+            this.logger = logger;
         }
 
         public IEnumerable<KeyValuePair<int, int>> Delays { get; } = new ConcurrentDictionary<int, int>();
@@ -38,7 +38,7 @@ namespace Contour.Transport.RabbitMQ.Internal
 
             for (var count = 0; count < this.attempts; count++)
             {
-                this.logger.Trace($"Attempt to send #{count}");
+                this.logger.LogTrace("Attempt to send #{Count}", count);
 
                 try
                 {
@@ -47,7 +47,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 }
                 catch (Exception ex)
                 {
-                    this.logger.Warn($"Attempt #{count} to send a message has failed", ex);
+                    this.logger.LogWarning(ex, "Attempt #{Count} to send a message has failed", count);
                     errors.Add(ex);
                 }
             }
@@ -91,10 +91,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                         return exchange;
                     });
         }
-
-        /// <summary>
-        /// ¬ыполн€ет определ€емые приложением задачи, св€занные с удалением, высвобождением или сбросом неуправл€емых ресурсов.
-        /// </summary>
+        
         public void Dispose()
         {
             if (this.disposed)

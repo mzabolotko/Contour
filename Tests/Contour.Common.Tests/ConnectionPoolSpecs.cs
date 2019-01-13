@@ -7,7 +7,7 @@ namespace Contour.Common.Tests
     using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Threading;
-
+    using Microsoft.Extensions.Logging;
     using Moq;
     using NUnit.Framework;
 
@@ -23,13 +23,17 @@ namespace Contour.Common.Tests
             [Test]
             public void should_dispose_connections_on_pool_disposal()
             {
+                var loggerFactoryMock = new Moq.Mock<ILoggerFactory>();
+                var loggerMock = new Moq.Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(Moq.It.IsAny<string>())).Returns(loggerMock.Object);
+
                 var conString = string.Empty;
                 var connection = new Mock<IConnection>();
 
                 var provider = new Mock<IConnectionProvider<IConnection>>();
                 provider.Setup(cp => cp.Create(conString)).Returns(() => connection.Object);
                 
-                var pool = new FakeConnectionPool(provider.Object);
+                var pool = new FakeConnectionPool(provider.Object, loggerFactoryMock.Object);
                 pool.Get(conString, false, CancellationToken.None);
                 pool.Dispose();
 
@@ -45,7 +49,11 @@ namespace Contour.Common.Tests
                 var provider = new Mock<IConnectionProvider<IConnection>>();
                 provider.Setup(cp => cp.Create(conString)).Returns(() => connection.Object);
 
-                var pool = new FakeConnectionPool(provider.Object);
+                var loggerFactoryMock = new Moq.Mock<ILoggerFactory>();
+                var loggerMock = new Moq.Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+                var pool = new FakeConnectionPool(provider.Object, loggerFactoryMock.Object);
                 pool.Dispose();
                 try
                 {
@@ -70,8 +78,12 @@ namespace Contour.Common.Tests
                     return con.Object;
                 });
 
+                var loggerFactoryMock = new Mock<ILoggerFactory>();
+                var loggerMock = new Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
                 const int Count = 5;
-                var pool = new FakeConnectionPool(provider.Object);
+                var pool = new FakeConnectionPool(provider.Object, loggerFactoryMock.Object);
 
                 var i = 0;
                 while (i++ < Count)
@@ -102,7 +114,11 @@ namespace Contour.Common.Tests
                     return con.Object;
                 });
 
-                var pool = new FakeConnectionPool(provider.Object);
+                var loggerFactoryMock = new Mock<ILoggerFactory>();
+                var loggerMock = new Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+                var pool = new FakeConnectionPool(provider.Object, loggerFactoryMock.Object);
 
                 var source = new CancellationTokenSource();
                 source.Cancel();
@@ -121,7 +137,11 @@ namespace Contour.Common.Tests
                     return con.Object;
                 });
 
-                var pool = new FakeConnectionPool(provider.Object);
+                var loggerFactoryMock = new Mock<ILoggerFactory>();
+                var loggerMock = new Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+                var pool = new FakeConnectionPool(provider.Object, loggerFactoryMock.Object);
                 var connection = pool.Get(conString, true, CancellationToken.None);
 
                 Assert.IsNotNull(connection);
@@ -138,7 +158,11 @@ namespace Contour.Common.Tests
                     return con.Object;
                 });
 
-                var pool = new FakeConnectionPool(provider.Object);
+                var loggerFactoryMock = new Mock<ILoggerFactory>();
+                var loggerMock = new Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+                var pool = new FakeConnectionPool(provider.Object, loggerFactoryMock.Object);
                 var c1 = pool.Get(conString, true, CancellationToken.None);
                 var c2 = pool.Get(conString, true, CancellationToken.None);
 
@@ -156,7 +180,11 @@ namespace Contour.Common.Tests
                     return con.Object;
                 });
 
-                var pool = new FakeConnectionPool(provider.Object);
+                var loggerFactoryMock = new Mock<ILoggerFactory>();
+                var loggerMock = new Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+                var pool = new FakeConnectionPool(provider.Object, loggerFactoryMock.Object);
                 var c1 = pool.Get(conString, false, CancellationToken.None);
                 var c2 = pool.Get(conString, false, CancellationToken.None);
 
@@ -174,7 +202,11 @@ namespace Contour.Common.Tests
                     return con.Object;
                 });
 
-                var pool = new FakeConnectionPool(provider.Object);
+                var loggerFactoryMock = new Mock<ILoggerFactory>();
+                var loggerMock = new Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+                var pool = new FakeConnectionPool(provider.Object, loggerFactoryMock.Object);
                 var c1 = pool.Get(conString, false, CancellationToken.None);
                 var c2 = pool.Get(conString, true, CancellationToken.None);
 
@@ -198,7 +230,11 @@ namespace Contour.Common.Tests
                     return con.Object;
                 });
 
-                var pool = new FakeConnectionPool(provider.Object);
+                var loggerFactoryMock = new Mock<ILoggerFactory>();
+                var loggerMock = new Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(It.IsAny<string>())).Returns(loggerMock.Object);
+
+                var pool = new FakeConnectionPool(provider.Object, loggerFactoryMock.Object);
                 var c1 = pool.Get(ConnectionString1, true, CancellationToken.None);
                 var c2 = pool.Get(ConnectionString2, true, CancellationToken.None);
 

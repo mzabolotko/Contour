@@ -39,11 +39,6 @@ namespace Contour.Receiving
         public Maybe<Func<ISubscriptionEndpointBuilder, ISubscriptionEndpoint>> EndpointBuilder { protected get; set; }
 
         /// <summary>
-        /// Обработчик сообщений, чья доставка завершилась провалом.
-        /// </summary>
-        public Maybe<IFailedDeliveryStrategy> FailedDeliveryStrategy { protected get; set; }
-
-        /// <summary>
         /// Количество одновременных обработчиков сообщений.
         /// </summary>
         public Maybe<uint> ParallelismLevel { protected get; set; }
@@ -58,12 +53,7 @@ namespace Contour.Receiving
         /// </summary>
         public Maybe<int> FaultQueueLimit { protected get; set; }
 
-        /// <summary>
-        /// Обработчик сообщений, для которых не найден потребитель.
-        /// </summary>
-        public Maybe<IUnhandledDeliveryStrategy> UnhandledDeliveryStrategy { protected get; set; }
-
-        /// <summary>
+         /// <summary>
         /// Создает новый экземпляр настроек как копию существующего.
         /// </summary>
         /// <returns>
@@ -86,17 +76,6 @@ namespace Contour.Receiving
         }
 
         /// <summary>
-        /// Возвращает обработчик сообщений, для которых доставка завершилась провалом.
-        /// </summary>
-        /// <returns>
-        /// Обработчик сообщений, для которых доставка завершилась провалом.
-        /// </returns>
-        public Maybe<IFailedDeliveryStrategy> GetFailedDeliveryStrategy()
-        {
-            return this.Pick<ReceiverOptions, IFailedDeliveryStrategy>((o) => o.FailedDeliveryStrategy);
-        }
-
-        /// <summary>
         /// Возвращает количество одновременных обработчиков сообщений.
         /// </summary>
         /// <returns>
@@ -107,18 +86,7 @@ namespace Contour.Receiving
             return this.Pick<ReceiverOptions, uint>((o) => o.ParallelismLevel);
         }
 
-        /// <summary>
-        /// Возвращает обработчик сообщений, для которых не удалось найти потребителя.
-        /// </summary>
-        /// <returns>
-        /// Обработчик сообщений, для которых не удалось найти потребителя.
-        /// </returns>
-        public Maybe<IUnhandledDeliveryStrategy> GetUnhandledDeliveryStrategy()
-        {
-            return this.Pick<ReceiverOptions, IUnhandledDeliveryStrategy>((o) => o.UnhandledDeliveryStrategy);
-        }
-
-        /// <summary>
+         /// <summary>
         /// Возвращает признак необходимости явно подтверждать успешно обработанные сообщения.
         /// </summary>
         /// <returns>
@@ -149,6 +117,20 @@ namespace Contour.Receiving
         public Maybe<int> GetFaultQueueLimit()
         {
             return this.Pick<ReceiverOptions, int>((o) => o.FaultQueueLimit);
+        }
+
+        public IUnhandledDeliveryStrategyBuilder UnhandledDeliveryStrategyBuilder { protected get; set; }
+
+        public IUnhandledDeliveryStrategyBuilder GetUnhandledDeliveryStrategyBuilder()
+        {
+            return this.Pick<ReceiverOptions, IUnhandledDeliveryStrategyBuilder>((o) => o.UnhandledDeliveryStrategyBuilder);
+        }
+
+        public IFailedDeliveryStrategyBuilder FailedDeliveryStrategyBuilder { protected get; set; }
+
+        public IFailedDeliveryStrategyBuilder GetFailedDeliveryStrategyBuilder()
+        {
+            return this.Pick<ReceiverOptions, IFailedDeliveryStrategyBuilder>((o) => o.FailedDeliveryStrategyBuilder);
         }
     }
 }

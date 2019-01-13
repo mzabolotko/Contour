@@ -1,11 +1,12 @@
 using Contour.Receiving;
+using Microsoft.Extensions.Logging;
 
 namespace Contour.Transport.RabbitMQ.Internal
 {
     internal class RabbitCallbackReceiver : RabbitReceiver
     {
-        public RabbitCallbackReceiver(RabbitBus bus, IReceiverConfiguration configuration, IConnectionPool<IRabbitConnection> connectionPool)
-            : base(bus, configuration, connectionPool)
+        public RabbitCallbackReceiver(RabbitBus bus, IReceiverConfiguration configuration, IConnectionPool<IRabbitConnection> connectionPool, ILoggerFactory loggerFactory)
+            : base(bus, configuration, connectionPool, loggerFactory)
         {
         }
 

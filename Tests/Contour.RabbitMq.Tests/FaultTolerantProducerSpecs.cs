@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Contour.Transport.RabbitMQ;
 using Contour.Transport.RabbitMQ.Internal;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
 
@@ -20,8 +21,10 @@ namespace Contour.RabbitMq.Tests
         [Test]
         public void should_prohibit_operations_if_disposed()
         {
+            var loggerMock = new Mock<ILogger<FaultTolerantProducer>>();
+
             var selector = new Mock<IProducerSelector>();
-            var producer = new FaultTolerantProducer(selector.Object, 0, 0, 0);
+            var producer = new FaultTolerantProducer(selector.Object, 0, 0, 0, loggerMock.Object);
             producer.Dispose();
 
             Assert.Throws<ObjectDisposedException>(
@@ -45,8 +48,11 @@ namespace Contour.RabbitMq.Tests
                 return mock.Object;
             });
 
-            var selector = new RoundRobinSelector(new ConcurrentQueue<IProducer>(producers));
-            var producer = new FaultTolerantProducer(selector, Count, 0, 0);
+            var selectorLoggerMock = new Mock<ILogger<RoundRobinSelector>>();
+            var producerLoggerMock = new Mock<ILogger<FaultTolerantProducer>>();
+
+            var selector = new RoundRobinSelector(new ConcurrentQueue<IProducer>(producers), selectorLoggerMock.Object);
+            var producer = new FaultTolerantProducer(selector, Count, 0, 0, producerLoggerMock.Object);
 
             var message = new Message<DummyRequest>(MessageLabel.Any, new DummyRequest(1));
             var exchange = new MessageExchange(message);
@@ -79,8 +85,11 @@ namespace Contour.RabbitMq.Tests
                 return mock.Object;
             });
 
-            var selector = new RoundRobinSelector(new ConcurrentQueue<IProducer>(producers));
-            var producer = new FaultTolerantProducer(selector, Count, 0, 0);
+            var selectorLoggerMock = new Mock<ILogger<RoundRobinSelector>>();
+            var producerLoggerMock = new Mock<ILogger<FaultTolerantProducer>>();
+
+            var selector = new RoundRobinSelector(new ConcurrentQueue<IProducer>(producers), selectorLoggerMock.Object);
+            var producer = new FaultTolerantProducer(selector, Count, 0, 0, producerLoggerMock.Object);
 
             var message = new Message<DummyRequest>(MessageLabel.Any, new DummyRequest(1));
             var exchange = new MessageExchange(message);
@@ -113,7 +122,9 @@ namespace Contour.RabbitMq.Tests
             var selector = new Mock<IProducerSelector>();
             selector.Setup(s => s.Next()).Returns(() => producerMock.Object);
 
-            var producer = new FaultTolerantProducer(selector.Object, Attempts, RetryDelay, ResetDelay);
+            var producerLoggerMock = new Mock<ILogger<FaultTolerantProducer>>();
+
+            var producer = new FaultTolerantProducer(selector.Object, Attempts, RetryDelay, ResetDelay, producerLoggerMock.Object);
 
             var message = new Message<DummyRequest>(MessageLabel.Any, new DummyRequest(1));
             var exchange = new MessageExchange(message);

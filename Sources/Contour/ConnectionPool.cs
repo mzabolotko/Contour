@@ -1,25 +1,24 @@
-﻿namespace Contour
-{
-    using System;
-    using System.Collections.Concurrent;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading;
-    using Common.Logging;
+﻿using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 
+namespace Contour
+{
     internal abstract class ConnectionPool<TConnection> : IConnectionPool<TConnection> where TConnection : class, IConnection
     {
         private readonly object syncRoot = new object();
-        private readonly ILog logger;
         private readonly ConcurrentDictionary<string, IList<Tuple<TConnection, bool>>> groups =
             new ConcurrentDictionary<string, IList<Tuple<TConnection, bool>>>();
-
+        private readonly ILogger<ConnectionPool<TConnection>> logger;
         private bool disposed;
         private CancellationTokenSource cancellation;
         
-        protected ConnectionPool()
+        protected ConnectionPool(ILoggerFactory loggerFactory)
         {
-            this.logger = LogManager.GetLogger(this.GetType().FullName);
+            this.logger = loggerFactory.CreateLogger<ConnectionPool<TConnection>>();
             this.cancellation = new CancellationTokenSource();
         }
 
@@ -59,12 +58,13 @@
                 if (reusable && group.Any(t => t.Item2))
                 {
                     pair = group.First(t => t.Item2);
-                    this.logger.Trace($"A reusable connection [{pair.Item1}] has been fetched from the pool");
+                    this.logger.LogTrace(
+                        "A reusable connection [{ConnectionString}] has been fetched from the pool", pair.Item1);
                 }
                 else
                 {
                     var connection = this.Provider.Create(connectionString);
-                    this.logger.Trace($"A new connection [{connection}] has been created");
+                    this.logger.LogTrace("A new connection [{Connection}] has been created", connection);
 
                     pair = new Tuple<TConnection, bool>(connection, reusable);
                     group.Add(pair);
@@ -73,7 +73,7 @@
                     connection.Closed += this.OnConnectionClosed;
                     connection.Disposed += this.OnConnectionDisposed;
                     connection.Open(source.Token);
-                    this.logger.Trace($"Connection [{connection}] has been opened");
+                    this.logger.LogTrace("Connection [{Connection}] has been opened", connection);
                 }
                 
                 return pair.Item1;
@@ -85,18 +85,18 @@
         /// </summary>
         public void Drop()
         {
-            this.logger.Trace("Dropping connection pool...");
+            this.logger.LogTrace("Dropping connection pool...");
 
             // Cancel any pending connection requests
             this.cancellation.Cancel();
-            this.logger.Trace("All pending connection requests have been canceled");
+            this.logger.LogTrace("All pending connection requests have been canceled");
 
             lock (this.syncRoot)
             {
                 IList<Tuple<TConnection, bool>> group;
                 while (this.groups.Count > 0 && this.groups.TryRemove(this.groups.Keys.First(), out group))
                 {
-                    this.logger.Trace("Cleaning up connection group...");
+                    this.logger.LogTrace("Cleaning up connection group...");
 
                     while (group.Any())
                     {
@@ -105,17 +105,17 @@
                         {
                             var connection = pair.Item1;
 
-                            this.logger.Trace($"Closing connection [{connection}]...");
+                            this.logger.LogTrace("Closing connection [{Connection}]...", connection);
                             connection.Close();
-                            this.logger.Trace($"Connection [{connection}] closed");
+                            this.logger.LogTrace("Connection [{Connection}] closed", connection);
 
-                            this.logger.Trace($"Disposing connection [{connection}]...");
+                            this.logger.LogTrace("Disposing connection [{Connection}]...", connection);
                             connection.Dispose();
-                            this.logger.Trace($"Connection [{connection}] disposed");
+                            this.logger.LogTrace("Connection [{Connection}] disposed", connection);
                         }
                         catch (Exception ex)
                         {
-                            this.logger.Warn($"Failed to dispose a pooled connection due to: {ex.Message}", ex);
+                            this.logger.LogWarning(ex, "Failed to dispose a pooled connection due to: {Message}", ex.Message);
                         }
                         finally
                         {
@@ -123,14 +123,14 @@
                         }
                     }
 
-                    this.logger.Trace("Connection group cleanup successfully completed");
+                    this.logger.LogTrace("Connection group cleanup successfully completed");
                 }
 
                 // Re-enable the clients to get new connections from the pool
                 this.cancellation = new CancellationTokenSource();
             }
 
-            this.logger.Trace("Connection pool successfully dropped");
+            this.logger.LogTrace("Connection pool successfully dropped");
         }
 
         /// <summary>
@@ -138,7 +138,7 @@
         /// </summary>
         public void Dispose()
         {
-            this.logger.Trace("Disposing connection pool...");
+            this.logger.LogTrace("Disposing connection pool...");
 
             lock (this.syncRoot)
             {
@@ -146,7 +146,7 @@
                 this.Drop();
             }
 
-            this.logger.Trace("Connection pool successfully disposed");
+            this.logger.LogTrace("Connection pool successfully disposed");
         }
 
         /// <summary>
@@ -186,8 +186,8 @@
                     {
                         var pair = group.First(p => p.Item1 == connection);
                         group.Remove(pair);
-                        this.logger.Trace(
-                            $"Connection [{connection.ConnectionString},{connection.Id}] removed from connection pool");
+                        this.logger.LogTrace(
+                            "Connection [{ConnectionString},{ConnectionId}] removed from connection pool", connection.ConnectionString, connection.Id);
                     }
                 }
             }

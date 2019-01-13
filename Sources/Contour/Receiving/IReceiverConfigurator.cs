@@ -17,17 +17,7 @@ namespace Contour.Receiving
         /// <returns>Конфигуратор получателя.</returns>
         IReceiverConfigurator<T> As<T>() where T : class;
 
-        /// <summary>
-        /// Регистрирует стратегию обработки сообщений, получение которых завершилось провалом.
-        /// </summary>
-        /// <param name="failedDeliveryStrategy">Стратегия обработки сообщений, получение которых завершилось провалом.</param>
-        /// <returns>Конфигуратор получателя с установленной стратегией обработки сообщений.</returns>
-        IReceiverConfigurator OnFailed(IFailedDeliveryStrategy failedDeliveryStrategy);
-
-        /// <summary>Регистрирует обработчик сообщений, получение которых завершилось провалом.</summary>
-        /// <param name="failedDeliveryHandler">Обработчик сообщений, получение которых завершилось провалом.</param>
-        /// <returns>Конфигуратор получателя с установленной стратегией обработки сообщений</returns>
-        IReceiverConfigurator OnFailed(Action<IFailedConsumingContext> failedDeliveryHandler);
+        IReceiverConfigurator OnFailed(IFailedDeliveryStrategyBuilder builder);
 
         /// <summary>Регистрирует обработчик входящего сообщения.</summary>
         /// <param name="handlerAction">Обработчик входящего сообщения.</param>
@@ -104,17 +94,7 @@ namespace Contour.Receiving
     public interface IReceiverConfigurator<T> : IReceiverConfigurator
         where T : class
     {
-        /// <summary>
-        /// Регистрирует стратегию обработки сообщений, получение которых завершилось провалом.
-        /// </summary>
-        /// <param name="failedDeliveryStrategy">Стратегия обработки сообщений, получение которых завершилось провалом.</param>
-        /// <returns>Конфигуратор получателя с установленной стратегией обработки сообщений.</returns>
-        new IReceiverConfigurator<T> OnFailed(IFailedDeliveryStrategy failedDeliveryStrategy);
-
-        /// <summary>Регистрирует обработчик сообщений, получение которых завершилось провалом.</summary>
-        /// <param name="failedDeliveryHandler">Обработчик сообщений, получение которых завершилось провалом.</param>
-        /// <returns>Конфигуратор получателя с установленной стратегией обработки сообщений</returns>
-        new IReceiverConfigurator<T> OnFailed(Action<IFailedConsumingContext> failedDeliveryHandler);
+        new IReceiverConfigurator<T> OnFailed(IFailedDeliveryStrategyBuilder builder);
 
         /// <summary>Регистрирует обработчик входящего сообщения.</summary>
         /// <param name="handlerAction">Обработчик входящего сообщения.</param>

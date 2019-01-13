@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using Common.Logging;
+using Microsoft.Extensions.Logging;
 
 using Contour.Configuration;
 using Contour.Filters;
@@ -16,7 +16,7 @@ namespace Contour.Sending
     /// </summary>
     internal abstract class AbstractSender : ISender
     {
-        private static readonly ILog Logger = LogManager.GetCurrentClassLogger();
+        private readonly ILogger<AbstractSender> logger;
 
         /// <summary>
         /// Фильтры обработки сообщений.
@@ -33,6 +33,8 @@ namespace Contour.Sending
         /// </summary>
         private readonly string breadCrumbsTail;
 
+        protected readonly ILoggerFactory loggerFactory;
+
         // TODO: refactor, don't copy filters
 
         /// <summary>
@@ -47,7 +49,7 @@ namespace Contour.Sending
         /// <param name="filters">
         /// A list of message handling filters
         /// </param>
-        protected AbstractSender(IEndpoint endpoint, ISenderConfiguration configuration, IEnumerable<IMessageExchangeFilter> filters)
+        protected AbstractSender(IEndpoint endpoint, ISenderConfiguration configuration, IEnumerable<IMessageExchangeFilter> filters, ILoggerFactory loggerFactory)
         {
             this.endpoint = endpoint;
             this.breadCrumbsTail = ";" + endpoint.Address;
@@ -58,6 +60,8 @@ namespace Contour.Sending
                 .ToList();
 
             this.Configuration = configuration;
+            this.loggerFactory = loggerFactory;
+            this.logger = this.loggerFactory.CreateLogger<AbstractSender>();
         }
 
         /// <summary>
@@ -124,7 +128,7 @@ namespace Contour.Sending
             var headers = this.ApplyOptions(options);
             headers[Headers.CorrelationId] = Guid.NewGuid().ToString("n");
 
-            Logger.Trace(m => m("Message original Id [{0}], correlation Id [{1}].", Headers.GetString(headers, Headers.OriginalMessageId), Headers.GetString(headers, Headers.CorrelationId)));
+            this.logger.LogTrace("Message original Id [{OriginalId}], correlation Id [{CorrelationId}].", Headers.GetString(headers, Headers.OriginalMessageId), Headers.GetString(headers, Headers.CorrelationId));
 
             return this.Request<T>(payload, headers);
         }
@@ -190,7 +194,7 @@ namespace Contour.Sending
                 headers[Headers.CorrelationId] = Guid.NewGuid().ToString("n");
             }
 
-            Logger.Trace($"Requesting: label=[{label}], correlationId=[{headers[Headers.CorrelationId]}]");
+            this.logger.LogTrace("Requesting: label=[{Label}], correlationId=[{CorrelationId}]", label, headers[Headers.CorrelationId]);
             var message = new Message(this.Configuration.Label.Equals(MessageLabel.Any) ? label : this.Configuration.Label, headers, payload);
 
             var exchange = new MessageExchange(message, typeof(T));

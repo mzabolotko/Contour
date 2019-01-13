@@ -1,6 +1,7 @@
 ﻿using Contour.Configuration;
 using Contour.Helpers;
 using Contour.Receiving;
+using Contour.Transport.RabbitMQ.Internal;
 
 namespace Contour.Transport.RabbitMQ
 {
@@ -36,7 +37,6 @@ namespace Contour.Transport.RabbitMQ
         /// Treats and returns a connection string as a sequence of RabbitMQ broker URLs
         /// </summary>
         public RabbitConnectionString RabbitConnectionString => new RabbitConnectionString(this.GetConnectionString().Value);
-
 
         /// <summary>
         /// Get the QoS settings.

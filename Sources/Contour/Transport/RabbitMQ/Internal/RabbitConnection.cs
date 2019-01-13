@@ -5,8 +5,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Common.Logging;
-
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
 
@@ -19,19 +18,21 @@ namespace Contour.Transport.RabbitMQ.Internal
         private const int ConnectionTimeout = 3000;
         private const int OperationTimeout = 500;
         private readonly object syncRoot = new object();
-        private readonly ILog logger = LogManager.GetLogger<RabbitConnection>();
+        private readonly ILogger logger;
         private readonly IEndpoint endpoint;
         private readonly IBusContext busContext;
+        private readonly ILoggerFactory loggerFactory;
         private readonly ConnectionFactory connectionFactory;
         private INativeConnection connection;
         
-        public RabbitConnection(IEndpoint endpoint, string connectionString, IBusContext busContext)
+        public RabbitConnection(IEndpoint endpoint, string connectionString, IBusContext busContext, ILoggerFactory loggerFactory)
         {
             this.Id = Guid.NewGuid();
             this.endpoint = endpoint;
             this.ConnectionString = connectionString;
             this.busContext = busContext;
-
+            this.loggerFactory = loggerFactory;
+            this.logger = this.loggerFactory.CreateLogger<RabbitConnection>();
             var clientProperties = new Dictionary<string, object>
             {
                 { "Endpoint", this.endpoint.Address },
@@ -65,11 +66,15 @@ namespace Contour.Transport.RabbitMQ.Internal
             {
                 if (this.connection?.IsOpen ?? false)
                 {
-                    this.logger.Trace($"Connection [{this.Id}] is already open");
+                    this.logger.LogTrace(
+                        "Connection [{ConnectionId}] is already open",
+                        this.Id);
                     return;
                 }
 
-                this.logger.Info($"Connecting to RabbitMQ using [{this.ConnectionString}]");
+                this.logger.LogInformation(
+                    "Connecting to RabbitMQ using [{ConnectionString}]",
+                    this.ConnectionString);
             
                 var retryCount = 0;
                 while (true)
@@ -83,7 +88,10 @@ namespace Contour.Transport.RabbitMQ.Internal
                         con.ConnectionShutdown += this.OnConnectionShutdown;
                         this.connection = con;
                         this.OnOpened();
-                        this.logger.Info($"Connection [{this.Id}] opened at [{this.connection.Endpoint}]");
+                        this.logger.LogInformation(
+                            "Connection [{ConnectionId}] opened at [{Endpoint}]",
+                            this.Id,
+                            this.connection.Endpoint);
 
                         return;
                     }
@@ -91,9 +99,9 @@ namespace Contour.Transport.RabbitMQ.Internal
                     {
                         var secondsToRetry = Math.Min(10, retryCount);
 
-                        this.logger.WarnFormat(
-                            "Unable to connect to RabbitMQ. Retrying in {0} seconds...",
+                        this.logger.LogWarning(
                             ex,
+                            "Unable to connect to RabbitMQ. Retrying in {RetrySecond} seconds...",
                             secondsToRetry);
 
                         if (con != null)
@@ -122,12 +130,16 @@ namespace Contour.Transport.RabbitMQ.Internal
                 try
                 {
                     var model = this.connection.CreateModel();
-                    var channel = new RabbitChannel(this.Id, model, this.busContext);
+                    var channel = new RabbitChannel(this.Id, model, this.busContext, this.loggerFactory);
                     return channel;
                 }
                 catch (Exception ex)
                 {
-                    this.logger.Error($"Failed to open a new channel in connection [{this}] due to: {ex.Message}", ex);
+                    this.logger.LogError(
+                        ex,
+                        "Failed to open a new channel in connection [{Connection}] due to: {Message}", 
+                        this,
+                        ex.Message);
                     throw;
                 }
             }
@@ -149,12 +161,15 @@ namespace Contour.Transport.RabbitMQ.Internal
                     try
                     {
                         var model = this.connection.CreateModel();
-                        var channel = new RabbitChannel(this.Id, model, this.busContext);
+                        var channel = new RabbitChannel(this.Id, model, this.busContext, this.loggerFactory);
                         return channel;
                     }
                     catch (Exception ex)
                     {
-                        this.logger.Error($"Failed to open a new channel due to: {ex.Message}; retrying...", ex);
+                        this.logger.LogError(
+                            ex,
+                            "Failed to open a new channel due to: {Message}; retrying...", 
+                            ex.Message);
                     }
                 }
             }
@@ -168,7 +183,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 {
                     if (this.connection.CloseReason == null)
                     {
-                        this.logger.Trace($"[{this.endpoint}]: closing connection.");
+                        this.logger.LogTrace("[{Endpoint}]: closing connection.", this.endpoint);
                         try
                         {
                             this.connection.Close(OperationTimeout);
@@ -179,8 +194,11 @@ namespace Contour.Transport.RabbitMQ.Internal
                         }
                         catch (AlreadyClosedException ex)
                         {
-                            this.logger.Warn(
-                                $"[{this.endpoint}]: connection is already closed: {ex.Message}");
+                            this.logger.LogWarning(
+                                ex,
+                                "[{Endpoint}]: connection is already closed: {Message}",
+                                this.endpoint,
+                                ex.Message);
                         }
                     }
                 }
@@ -197,9 +215,11 @@ namespace Contour.Transport.RabbitMQ.Internal
                 }
                 catch (Exception ex)
                 {
-                    this.logger.Error(
-                        $"[{this.endpoint}]: failed to abort the underlying connection due to: {ex.Message}", 
-                        ex);
+                    this.logger.LogError(
+                        ex,
+                        "[{Endpoint}]: failed to abort the underlying connection due to: {Message}",
+                        this.endpoint,
+                        ex.Message);
                     throw;
                 }
             }
@@ -215,15 +235,21 @@ namespace Contour.Transport.RabbitMQ.Internal
 
                     if (this.connection != null)
                     {
-                        this.logger.Trace(
-                            $"[{this.endpoint}]: disposing connection [{this.Id}] at [{this.connection.Endpoint}].");
+                        this.logger.LogTrace(
+                            "[{Endpoint}]: disposing connection [{ConnectionId}] at [{Endpoint}].",
+                            this.endpoint,
+                            this.Id,
+                            this.connection.Endpoint);
                         this.connection?.Dispose();
                         this.connection = null;
                     }
                 }
                 catch (Exception ex)
                 {
-                    this.logger.Trace($"An error '{ex.Message}' during connection cleanup has been suppressed");
+                    this.logger.LogWarning(
+                        ex,
+                        "An error '{Message}' during connection cleanup has been suppressed",
+                        ex.Message);
                 }
                 finally
                 {
@@ -257,7 +283,11 @@ namespace Contour.Transport.RabbitMQ.Internal
             Task.Factory.StartNew(
                 () =>
                 {
-                    this.logger.Trace($"Connection [{this.Id}] has been closed due to {eventArgs.ReplyText} ({eventArgs.ReplyCode})");
+                    this.logger.LogTrace(
+                        "Connection [{ConnectionId}] has been closed due to {ReplyText} ({ReplyCode})",
+                        this.Id,
+                        eventArgs.ReplyText,
+                        eventArgs.ReplyCode);
 
                     lock (this.syncRoot)
                     {

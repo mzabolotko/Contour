@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Contour.Filters;
 using Contour.Helpers;
 using Contour.Sending;
+using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
 
@@ -49,7 +50,8 @@ namespace Contour.Common.Tests
                         },
                     new Mock<IEndpoint>().Object,
                     senderConfigMock.Object,
-                    Enumerable.Empty<IMessageExchangeFilter>());
+                    Enumerable.Empty<IMessageExchangeFilter>(),
+                    new LoggerFactory());
 
                 var r = sut.Request<object>(MessageLabel.Empty, new { }, new RequestOptions()).Result;
 
@@ -61,6 +63,10 @@ namespace Contour.Common.Tests
             [Test]
             public void ShouldReplaceCorrelationIdOnRequestWithoutLabel()
             {
+                var loggerFactoryMock = new Moq.Mock<ILoggerFactory>();
+                var loggerMock = new Moq.Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(Moq.It.IsAny<string>())).Returns(loggerMock.Object);
+
                 var storageMock = new Mock<IIncomingMessageHeaderStorage>();
                 var incomingHeaders = new Dictionary<string, object>
                 {
@@ -92,7 +98,8 @@ namespace Contour.Common.Tests
                     },
                     new Mock<IEndpoint>().Object,
                     senderConfigMock.Object,
-                    Enumerable.Empty<IMessageExchangeFilter>());
+                    Enumerable.Empty<IMessageExchangeFilter>(),
+                    loggerFactoryMock.Object);
 
                 var r = sut.Request<object>(new { }, new RequestOptions()).Result;
 
@@ -106,8 +113,8 @@ namespace Contour.Common.Tests
         {
             private readonly Func<MessageExchange, Task<MessageExchange>> internalSend;
 
-            public TestSender(Func<MessageExchange, Task<MessageExchange>> internalSend, IEndpoint endpoint, ISenderConfiguration configuration, IEnumerable<IMessageExchangeFilter> filters)
-                : base(endpoint, configuration, filters)
+            public TestSender(Func<MessageExchange, Task<MessageExchange>> internalSend, IEndpoint endpoint, ISenderConfiguration configuration, IEnumerable<IMessageExchangeFilter> filters, ILoggerFactory loggerFactory)
+                : base(endpoint, configuration, filters, loggerFactory)
             {
                 this.internalSend = internalSend;
             }

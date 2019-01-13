@@ -1,15 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+
+using Microsoft.Extensions.Logging;
+
+using Contour.Filters;
+using Contour.Receiving;
+using Contour.Sending;
+using Contour.Serialization;
+using Contour.Validation;
 using Contour.Configurator;
 
 namespace Contour.Configuration
 {
-    using System;
-
-    using Contour.Filters;
-    using Contour.Receiving;
-    using Contour.Sending;
-    using Contour.Serialization;
-    using Contour.Validation;
 
     /// <summary>
     ///   Интерфейс для конфигурирования экземпляра шины событий
@@ -116,37 +118,8 @@ namespace Contour.Configuration
         /// </exception>
         IReceiverConfigurator On(MessageLabel label);
 
-        /// <summary>
-        /// Устанавливает обработчик обработанных с ошибкой сообщений.
-        /// </summary>
-        /// <param name="failedDeliveryStrategy">
-        /// Стратегия обработки некорректно обработанных сообщений.
-        /// </param>
-        void OnFailed(IFailedDeliveryStrategy failedDeliveryStrategy);
-
-        /// <summary>
-        /// Устанавливает обработчик обработанных с ошибкой сообщений.
-        /// </summary>
-        /// <param name="failedDeliveryHandler">
-        /// Обработчик некорректно обработанных сообщений.
-        /// </param>
-        void OnFailed(Action<IFailedConsumingContext> failedDeliveryHandler);
-
-        /// <summary>
-        /// Устанавливает обработчик недоставленных (с отсутствующей подпиской) сообщений.
-        /// </summary>
-        /// <param name="unhandledDeliveryStrategy">
-        /// Стратегия обработки недоставленных сообщений.
-        /// </param>
-        void OnUnhandled(IUnhandledDeliveryStrategy unhandledDeliveryStrategy);
-
-        /// <summary>
-        /// Устанавливает обработчик недоставленных (с отсутствующей подпиской) сообщений.
-        /// </summary>
-        /// <param name="unhandledDeliveryHandler">
-        /// Обработчик недоставленного сообщения.
-        /// </param>
-        void OnUnhandled(Action<IFaultedConsumingContext> unhandledDeliveryHandler);
+        void UseUnhandledDeliveryStrategyBuilder(IUnhandledDeliveryStrategyBuilder builder);
+        void UseFailedDeliveryStrategyBuilder(IFailedDeliveryStrategyBuilder builder);
 
         /// <summary>
         /// The register filter.
@@ -303,5 +276,11 @@ namespace Contour.Configuration
         /// </summary>
         /// <param name="provider"></param>
         void UseConnectionStringProvider(IConnectionStringProvider provider);
+
+        /// <summary>
+        /// Set the logger factory provder
+        /// </summary>
+        /// <param name="loggerFactoryProvider">The delegate which creates the logger foactory.</param>
+        void UseLoggerFactoryProvider(Func<ILoggerFactory> loggerFactoryProvider);
     }
 }

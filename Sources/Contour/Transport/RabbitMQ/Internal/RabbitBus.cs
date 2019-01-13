@@ -2,11 +2,11 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Common.Logging;
 using Contour.Configuration;
 using Contour.Helpers;
 using Contour.Receiving;
 using Contour.Sending;
+using Microsoft.Extensions.Logging;
 
 namespace Contour.Transport.RabbitMQ.Internal
 {
@@ -16,7 +16,7 @@ namespace Contour.Transport.RabbitMQ.Internal
     internal class RabbitBus : AbstractBus, IBusAdvanced
     {
         private readonly object syncRoot = new object();
-        private readonly ILog logger = LogManager.GetLogger<RabbitBus>();
+        private readonly ILogger<RabbitBus> logger;
         private readonly ManualResetEvent isRestarting = new ManualResetEvent(false);
         private readonly ManualResetEvent ready = new ManualResetEvent(false);
         private readonly IConnectionPool<IRabbitConnection> connectionPool;
@@ -31,12 +31,13 @@ namespace Contour.Transport.RabbitMQ.Internal
         public RabbitBus(BusConfiguration configuration)
             : base(configuration)
         {
+            this.logger = this.loggerFactory.CreateLogger<RabbitBus>();
             this.cancellationTokenSource = new CancellationTokenSource();
             var completion = new TaskCompletionSource<object>();
             completion.SetResult(new object());
             this.restartTask = completion.Task;
             
-            this.connectionPool = new RabbitConnectionPool(this);
+            this.connectionPool = new RabbitConnectionPool(this, this.loggerFactory);
         }
         
         /// <summary>
@@ -82,8 +83,8 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </summary>
         public override void Shutdown()
         {
-            this.logger.InfoFormat(
-                "Shutting down [{0}] with endpoint [{1}].", 
+            this.logger.LogInformation(
+                "Shutting down [{Name}] with endpoint [{Endpoint}].", 
                 this.GetType().Name, 
                 this.Endpoint);
 
@@ -92,7 +93,7 @@ namespace Contour.Transport.RabbitMQ.Internal
 
             this.Stop();
 
-            this.logger.Trace(m => m("{0}: resetting bus configuration", this.Endpoint));
+            this.logger.LogTrace("{Endpoint}: resetting bus configuration", this.Endpoint);
             this.IsConfigured = false;
 
             // если не ожидать завершения задачи до сброса флага IsShuttingDown,
@@ -118,26 +119,31 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </returns>
         public RabbitReceiver RegisterReceiver(IReceiverConfiguration configuration, bool isCallback = false)
         {
-            this.logger.Trace(
-                $"Registering a new receiver of [{configuration.Label}] with connection string [{configuration.Options.GetConnectionString()}]");
+            this.logger.LogTrace(
+                "Registering a new receiver of [{Label}] with connection string [{ConnectionString}]", 
+                configuration.Label, 
+                configuration.Options.GetConnectionString());
 
             RabbitReceiver receiver;
             if (isCallback)
             {
-                receiver = new RabbitCallbackReceiver(this, configuration, this.connectionPool);
+                receiver = new RabbitCallbackReceiver(this, configuration, this.connectionPool, this.loggerFactory);
 
                 // No need to subscribe to listener-created event as it will not be fired by the callback receiver. A callback listener is not checked with listeners in other receivers for compatibility.
             }
             else
             {
-                receiver = new RabbitReceiver(this, configuration, this.connectionPool);
+                receiver = new RabbitReceiver(this, configuration, this.connectionPool, this.loggerFactory);
                 receiver.ListenerCreated += this.OnListenerCreated;
             }
 
             this.ComponentTracker.Register(receiver);
 
-            this.logger.Trace(
-                $"A receiver of [{configuration.Label}] with connection string [{configuration.Options.GetConnectionString()}] registered successfully");
+            this.logger.LogTrace(
+                "A receiver of [{Label}] with connection string [{ConnectionString}] registered successfully",
+                configuration.Label,
+                configuration.Options.GetConnectionString());
+
             return receiver;
         }
 
@@ -152,14 +158,18 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </returns>
         public RabbitSender RegisterSender(ISenderConfiguration configuration)
         {
-            this.logger.Trace(
-                $"Registering a new sender of [{configuration.Label}] with connection string [{configuration.Options.GetConnectionString()}]");
+            this.logger.LogTrace(
+                "Registering a new sender of [{Label}] with connection string [{ConnectionString}]",
+                configuration.Label,
+                configuration.Options.GetConnectionString());
 
-            var sender = new RabbitSender(this, configuration, this.connectionPool, this.Configuration.Filters.ToList());
+            var sender = new RabbitSender(this, configuration, this.connectionPool, this.Configuration.Filters.ToList(), this.loggerFactory);
             this.ComponentTracker.Register(sender);
 
-            this.logger.Trace(
-                $"A sender of [{configuration.Label}] with connection string [{configuration.Options.GetConnectionString()}] registered successfully");
+            this.logger.LogTrace(
+                "A sender of [{Label}] with connection string [{ConnectionString}] registered successfully", 
+                configuration.Label, 
+                configuration.Options.GetConnectionString());
 
             return sender;
         }
@@ -177,7 +187,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 this.isRestarting.Set();
             }
 
-            this.logger.Trace(m => m("{0}: Restarting...", this.Endpoint));
+            this.logger.LogTrace("{Endpoint}: Restarting...", this.Endpoint);
 
             this.ResetRestartTask();
 
@@ -209,13 +219,13 @@ namespace Contour.Transport.RabbitMQ.Internal
 
             this.OnStarting();
 
-            this.logger.Trace(m => m("{0}: configuring.", this.Endpoint));
+            this.logger.LogTrace("{Endpoint}: configuring.", this.Endpoint);
             this.Configure();
 
-            this.logger.Trace(m => m("{0}: starting components.", this.Endpoint));
+            this.logger.LogTrace("{Endpoint}: starting components.", this.Endpoint);
             this.ComponentTracker.StartAll();
 
-            this.logger.Trace(m => m("{0}: marking as ready.", this.Endpoint));
+            this.logger.LogTrace("{Endpoint}: marking as ready.", this.Endpoint);
             this.IsStarted = true;
             this.ready.Set();
 
@@ -229,12 +239,12 @@ namespace Contour.Transport.RabbitMQ.Internal
                 return;
             }
 
-            this.logger.Trace(m => m("{0}: marking as not ready.", this.Endpoint));
+            this.logger.LogTrace("{Endpoint}: marking as not ready.", this.Endpoint);
             this.ready.Reset();
 
             this.OnStopping();
 
-            this.logger.Trace(m => m("{0}: stopping bus components.", this.Endpoint));
+            this.logger.LogTrace("{Endpoint}: stopping bus components.", this.Endpoint);
             this.ComponentTracker.StopAll();
             
             this.OnStopped();
@@ -254,13 +264,13 @@ namespace Contour.Transport.RabbitMQ.Internal
                     ex.Handle(
                         e =>
                         {
-                            this.logger.ErrorFormat("{0}: Caught unexpected exception.", e, this.Endpoint);
+                            this.logger.LogError(e, "{Endpoint}: Caught unexpected exception.", this.Endpoint);
                             return true;
                         });
                 }
                 catch (Exception ex)
                 {
-                    this.logger.ErrorFormat("{0}: Caught unexpected exception.", ex, this.Endpoint);
+                    this.logger.LogError(ex, "{Endpoint}: Caught unexpected exception.", this.Endpoint);
                 }
                 finally
                 {
@@ -280,8 +290,13 @@ namespace Contour.Transport.RabbitMQ.Internal
             var senderConfigurations = this.Configuration.SenderConfigurations.ToList();
             var receiverConfigurations = this.Configuration.ReceiverConfigurations.ToList();
 
-            this.logger.Trace(
-                $"Configuring [{name}] with endpoint [{this.Endpoint}]:\r\nSenders:\r\n\t{string.Join("\r\n\t", senderConfigurations.Select(s => $"[{s.Label}]\t=>\t{s.Options.GetConnectionString()}"))}\r\nReceivers:\r\n\t{string.Join("\r\n\t", receiverConfigurations.Select(r => $"[{r.Label}]\t=>\t{r.Options.GetConnectionString()}"))}");
+            this.logger.LogTrace(
+                "Configuring [{Name}] with endpoint [{Endpoint}]. Senders: {Senders}, Receivers: {Receivers}",
+                name, 
+                this.Endpoint, 
+                string.Join(",", senderConfigurations.Select(s => $"[{s.Label}] => {s.Options.GetConnectionString()}")),
+                string.Join(",", receiverConfigurations.Select(r => $"[{r.Label}] => {r.Options.GetConnectionString()}")));
+                
 
             foreach (var sender in senderConfigurations)
             {
@@ -294,7 +309,7 @@ namespace Contour.Transport.RabbitMQ.Internal
             }
 
             this.IsConfigured = true;
-            this.logger.Info($"Configuration of [{name}] completed successfully");
+            this.logger.LogInformation($"Configuration of [{name}] completed successfully", name);
         }
         
         private void OnListenerCreated(object sender, ListenerCreatedEventArgs e)

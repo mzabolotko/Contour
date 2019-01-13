@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Contour.Transport.RabbitMQ.Internal;
 using FluentAssertions;
 using FluentAssertions.Extensions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
 // ReSharper disable InconsistentNaming
@@ -24,7 +25,9 @@ namespace Contour.RabbitMq.Tests
             [Test]
             public void should_use_not_null_collection()
             {
-                Assert.Throws<ArgumentNullException>(() => new RoundRobinSelector(null));
+                var loggerMock = new Mock<ILogger<RoundRobinSelector>>();
+
+                Assert.Throws<ArgumentNullException>(() => new RoundRobinSelector(null, loggerMock.Object));
             }
 
             [Test]
@@ -37,7 +40,8 @@ namespace Contour.RabbitMq.Tests
                 var producers = Enumerable.Range(0, Count).Select(i => new Mock<IProducer>().Object);
                 var list = producers.ToList();
 
-                var selector = new RoundRobinSelector(new ConcurrentQueue<IProducer>(list));
+                var loggerMock = new Mock<ILogger<RoundRobinSelector>>();
+                var selector = new RoundRobinSelector(new ConcurrentQueue<IProducer>(list), loggerMock.Object);
 
                 for (var i = 0; i < Size; i++)
                 {
@@ -57,7 +61,8 @@ namespace Contour.RabbitMq.Tests
                 var producers = Enumerable.Range(0, Count).Select(i => new Mock<IProducer>().Object);
 
                 var queue = new ConcurrentQueue<IProducer>(producers);
-                var selector = new RoundRobinSelector(queue);
+                var loggerMock = new Mock<ILogger<RoundRobinSelector>>();
+                var selector = new RoundRobinSelector(queue, loggerMock.Object);
                 
                 for (var i = 0; i < Count; i++)
                 {
@@ -88,7 +93,9 @@ namespace Contour.RabbitMq.Tests
                 var producers = Enumerable.Range(0, Count).Select(i => new Mock<IProducer>().Object);
 
                 var queue = new ConcurrentQueue<IProducer>(producers);
-                var selector = new RoundRobinSelector(queue);
+                var loggerMock = new Mock<ILogger<RoundRobinSelector>>();
+
+                var selector = new RoundRobinSelector(queue, loggerMock.Object);
 
                 IProducer p;
                 while (queue.TryDequeue(out p))
@@ -114,7 +121,9 @@ namespace Contour.RabbitMq.Tests
                 
                 var producers = Enumerable.Range(0, ProducerCount).Select(i => new Mock<IProducer>().Object);
                 var queue = new ConcurrentQueueWithDelays<IProducer>(producers, MaxDelay);
-                var selector = new RoundRobinSelector(queue);
+                var loggerMock = new Mock<ILogger<RoundRobinSelector>>();
+
+                var selector = new RoundRobinSelector(queue, loggerMock.Object);
 
                 var accessors = Enumerable.Range(0, ThreadCount).Select(i => new Thread(() =>
                 {

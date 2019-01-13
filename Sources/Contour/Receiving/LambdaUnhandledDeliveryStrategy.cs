@@ -1,33 +1,18 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="LambdaUnhandledDeliveryStrategy.cs" company="">
-//   
-// </copyright>
-// <summary>
-//   The lambda unhandled delivery strategy.
-// </summary>
-// --------------------------------------------------------------------------------------------------------------------
+﻿using Microsoft.Extensions.Logging;
+using System;
 
 namespace Contour.Receiving
 {
-    using System;
-
-    using Common.Logging;
-
     /// <summary>
     /// The lambda unhandled delivery strategy.
     /// </summary>
     public class LambdaUnhandledDeliveryStrategy : IUnhandledDeliveryStrategy
     {
-        #region Fields
-
         /// <summary>
         /// The _handler action.
         /// </summary>
-        private readonly Action<IUnhandledConsumingContext> _handlerAction;
-
-        #endregion
-
-        #region Constructors and Destructors
+        private readonly Action<IUnhandledConsumingContext> handlerAction;
+        private readonly ILogger<LambdaUnhandledDeliveryStrategy> logger;
 
         /// <summary>
         /// Инициализирует новый экземпляр класса <see cref="LambdaUnhandledDeliveryStrategy"/>.
@@ -35,14 +20,11 @@ namespace Contour.Receiving
         /// <param name="handlerAction">
         /// The handler action.
         /// </param>
-        public LambdaUnhandledDeliveryStrategy(Action<IUnhandledConsumingContext> handlerAction)
+        public LambdaUnhandledDeliveryStrategy(Action<IUnhandledConsumingContext> handlerAction, ILogger<LambdaUnhandledDeliveryStrategy> logger)
         {
-            this._handlerAction = handlerAction;
+            this.handlerAction = handlerAction;
+            this.logger = logger;
         }
-
-        #endregion
-
-        #region Public Methods and Operators
 
         /// <summary>
         /// The handle.
@@ -54,15 +36,15 @@ namespace Contour.Receiving
         {
             try
             {
-                this._handlerAction(unhandledConsumingContext);
+                this.handlerAction(unhandledConsumingContext);
             }
             catch (Exception ex)
             {
-                LogManager.GetCurrentClassLogger().
-                    ErrorFormat("Unable to handle failed message [{0}].", ex, unhandledConsumingContext.Delivery.Label);
+                this.logger.LogError(
+                    ex,
+                    "Unable to handle failed message [{Label}].", 
+                    unhandledConsumingContext.Delivery.Label);
             }
         }
-
-        #endregion
     }
 }

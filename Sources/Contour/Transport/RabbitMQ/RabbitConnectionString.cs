@@ -1,12 +1,10 @@
-﻿using Common.Logging;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Contour.Transport.RabbitMQ
 {
-    using System;
-    using System.Collections;
-    using System.Collections.Generic;
-    using System.Linq;
-
     /// <summary>
     /// Enables RabbitMQ connection string operations
     /// </summary>
@@ -14,7 +12,6 @@ namespace Contour.Transport.RabbitMQ
     {
         private const string Separator = ",";
         private readonly IList<string> urls;
-        private readonly ILog logger = LogManager.GetCurrentClassLogger();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RabbitConnectionString"/> class.
@@ -43,9 +40,6 @@ namespace Contour.Transport.RabbitMQ
             {
                 throw new ArgumentException("The provided connection string contains empty URLs");
             }
-
-            this.logger.Trace(
-                $"Connection string [{connectionString}] has been split into: {string.Join("; ", this.urls)}");
         }
 
         /// <summary>

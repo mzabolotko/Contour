@@ -12,6 +12,7 @@ using RabbitMQ.Client.Exceptions;
 namespace Contour.RabbitMq.Tests
 {
     using FluentAssertions.Extensions;
+    using Microsoft.Extensions.Logging;
     using Moq;
     using Transport.RabbitMQ;
 
@@ -27,10 +28,14 @@ namespace Contour.RabbitMq.Tests
             [Test]
             public void should_not_close_connection_on_channel_failure()
             {
+                var loggerFactoryMock = new Moq.Mock<ILoggerFactory>();
+                var loggerMock = new Moq.Mock<ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(Moq.It.IsAny<string>())).Returns(loggerMock.Object);
+
                 var bus = this.ConfigureBus("Test", cfg => { });
                 var tcs = new TaskCompletionSource<bool>(true);
                 
-                var connection = new RabbitConnection(new Endpoint("test"), bus.Configuration.ConnectionString, bus);
+                var connection = new RabbitConnection(new Endpoint("test"), bus.Configuration.ConnectionString, bus, loggerFactoryMock.Object);
                 connection.Closed += (sender, args) => tcs.SetResult(false);
 
                 var tokenSource = new CancellationTokenSource();

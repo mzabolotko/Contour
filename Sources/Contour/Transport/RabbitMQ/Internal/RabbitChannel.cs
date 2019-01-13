@@ -1,14 +1,16 @@
-﻿namespace Contour.Transport.RabbitMQ.Internal
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using Microsoft.Extensions.Logging;
+using RabbitMQ.Client;
+
+using Contour.Helpers;
+using Contour.Receiving;
+using Contour.Transport.RabbitMQ.Topology;
+
+namespace Contour.Transport.RabbitMQ.Internal
 {
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Threading;
-    using Common.Logging;
-    using Helpers;
-    using Receiving;
-    using Topology;
-    using global::RabbitMQ.Client;
 
     /// <summary>
     /// The rabbit channel.
@@ -17,7 +19,7 @@
     {
         private readonly object sync = new object();
         private readonly IBusContext busContext;
-        private readonly ILog logger;
+        private readonly ILogger logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RabbitChannel"/> class. 
@@ -25,12 +27,12 @@
         /// <param name="connectionId">A connection identifier to which this channel belongs</param>
         /// <param name="model">A native transport channel</param>
         /// <param name="busContext">A bus context</param>
-        public RabbitChannel(Guid connectionId, IModel model, IBusContext busContext)
+        public RabbitChannel(Guid connectionId, IModel model, IBusContext busContext, ILoggerFactory loggerFactory)
         {
             this.ConnectionId = connectionId;
             this.Model = model;
             this.busContext = busContext;
-            this.logger = LogManager.GetLogger($"{this.GetType().FullName}({this.ConnectionId}, {this.GetHashCode()})");
+            this.logger = loggerFactory.CreateLogger($"{this.GetType().FullName}({this.ConnectionId}, {this.GetHashCode()})");
 
             this.Model.ModelShutdown += this.OnModelShutdown;
         }
@@ -69,7 +71,10 @@
         /// </param>
         public void Accept(RabbitDelivery delivery)
         {
-            this.logger.Trace(m => m("Accepting message [{0}] ({1}).", delivery.Label, delivery.Args.DeliveryTag));
+            this.logger.LogTrace(
+                "Accepting message [{Label}] ({DeliveryTag}).", 
+                delivery.Label, 
+                delivery.Args.DeliveryTag);
 
             this.SafeNativeInvoke(n => n.BasicAck(delivery.Args.DeliveryTag, false));
         }
@@ -239,7 +244,11 @@
         {
             var nativeRoute = (RabbitRoute)route;
 
-            this.logger.Trace(m => m("Emitting message [{0}] ({1}) through [{2}].", message.Label, message.Payload, nativeRoute));
+            this.logger.LogTrace(
+                "Emitting message [{Label}] ({Payload}) through [{Route}].", 
+                message.Label, 
+                message.Payload, 
+                nativeRoute);
 
             var props = this.Model.CreateBasicProperties();
             var body = this.busContext.PayloadConverter.FromObject(message.Payload);
@@ -270,7 +279,10 @@
         /// </param>
         public void Reject(RabbitDelivery delivery, bool requeue)
         {
-            this.logger.Trace(m => m("Rejecting message [{0}] ({1}).", delivery.Label, delivery.Args.DeliveryTag));
+            this.logger.LogTrace(
+                "Rejecting message [{Label}] ({DeliveryTag}).", 
+                delivery.Label, 
+                delivery.Args.DeliveryTag);
 
             this.SafeNativeInvoke(n => n.BasicNack(delivery.Args.DeliveryTag, false, requeue));
         }
@@ -397,7 +409,7 @@
 
         private void OnModelShutdown(object sender, ShutdownEventArgs args)
         {
-            this.logger.Trace($"Channel is closed due to '{args.ReplyText}'");
+            this.logger.LogTrace("Channel is closed due to [{ReplyText}]", args.ReplyText);
             this.Shutdown(this, args);
         }
 
@@ -413,13 +425,17 @@
             {
                 lock (this.sync)
                 {
-                    this.logger.Trace($"Performing channel action [{invokeAction.Method.Name}]");
+                    this.logger.LogTrace($"Performing channel action [{invokeAction.Method.Name}]");
                     invokeAction(this.Model);
                 }
             }
             catch (Exception ex)
             {
-                this.logger.Error($"Channel action failed due to {ex.Message}", ex);
+                this.logger.LogError(
+                    ex,
+                    "Channel action failed due to {Message} on {MethodName}", 
+                    ex.Message, 
+                    invokeAction.Method.Name);
                 throw;
             }
         }

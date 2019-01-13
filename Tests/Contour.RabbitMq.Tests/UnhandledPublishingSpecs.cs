@@ -11,6 +11,7 @@ using Contour.Transport.RabbitMQ.Topology;
 using NUnit.Framework;
 
 using Queue = Contour.Transport.RabbitMQ.Topology.Queue;
+using Microsoft.Extensions.Logging;
 
 namespace Contour.RabbitMq.Tests
 {
@@ -35,6 +36,21 @@ namespace Contour.RabbitMq.Tests
             [Test]
             public void should_move_messages_to_separate_queue()
             {
+                var strategyMock = new Moq.Mock<IUnhandledDeliveryStrategy>();
+                strategyMock
+                    .Setup(sm => sm.Handle(Moq.It.IsAny<IUnhandledConsumingContext>()))
+                    .Callback<IFailedConsumingContext>(
+                        d =>
+                        {
+                            d.Forward("all.dead", d.BuildFaultMessage());
+                            d.Accept();
+                        });
+
+                var builderMock = new Moq.Mock<IUnhandledDeliveryStrategyBuilder>();
+                builderMock
+                    .Setup(bm => bm.Build(Moq.It.IsAny<ILoggerFactory>()))
+                    .Returns(strategyMock.Object);
+
                 IBus producer = this.StartBus(
                     "producer",
                     cfg => cfg.Route("foo")
@@ -56,12 +72,7 @@ namespace Contour.RabbitMq.Tests
                                             return e;
                                         });
 
-                            cfg.OnUnhandled(
-                                d =>
-                                    {
-                                        d.Forward("all.dead", d.BuildFaultMessage());
-                                        d.Accept();
-                                    });
+                            cfg.UseUnhandledDeliveryStrategyBuilder(builderMock.Object);
 
                             cfg.On<BooMessage>("boo")
                                 .ReactWith((m, ctx) => { wrongHandler = true; })
@@ -161,6 +172,17 @@ namespace Contour.RabbitMq.Tests
             [Test]
             public void should_keep_in_queue()
             {
+                var strategyMock = new Moq.Mock<IUnhandledDeliveryStrategy>();
+                strategyMock
+                    .Setup(sm => sm.Handle(Moq.It.IsAny<IUnhandledConsumingContext>()))
+                    .Callback<IFailedConsumingContext>(
+                        d => d.Reject(true));
+
+                var builderMock = new Moq.Mock<IUnhandledDeliveryStrategyBuilder>();
+                builderMock
+                    .Setup(bm => bm.Build(Moq.It.IsAny<ILoggerFactory>()))
+                    .Returns(strategyMock.Object);
+
                 IBus producer = this.StartBus(
                     "producer",
                     cfg => cfg.Route("foo")
@@ -172,7 +194,7 @@ namespace Contour.RabbitMq.Tests
                     "consumer",
                     cfg =>
                         {
-                            cfg.OnUnhandled(d => d.Reject(true));
+                            cfg.UseUnhandledDeliveryStrategyBuilder(builderMock.Object);
 
                             cfg.On<BooMessage>("boo")
                                 .ReactWith((m, ctx) => { wrongHandler = true; })

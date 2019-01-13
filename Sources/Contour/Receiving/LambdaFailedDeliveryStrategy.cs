@@ -1,33 +1,19 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="LambdaFailedDeliveryStrategy.cs" company="">
-//   
-// </copyright>
-// <summary>
-//   The lambda failed delivery strategy.
-// </summary>
-// --------------------------------------------------------------------------------------------------------------------
+﻿using Microsoft.Extensions.Logging;
+using System;
 
 namespace Contour.Receiving
 {
-    using System;
-
-    using Common.Logging;
 
     /// <summary>
     /// The lambda failed delivery strategy.
     /// </summary>
     public class LambdaFailedDeliveryStrategy : IFailedDeliveryStrategy
     {
-        #region Fields
-
         /// <summary>
         /// The _handler action.
         /// </summary>
         private readonly Action<IFailedConsumingContext> _handlerAction;
-
-        #endregion
-
-        #region Constructors and Destructors
+        private readonly ILogger<LambdaFailedDeliveryStrategy> logger;
 
         /// <summary>
         /// Инициализирует новый экземпляр класса <see cref="LambdaFailedDeliveryStrategy"/>.
@@ -35,14 +21,11 @@ namespace Contour.Receiving
         /// <param name="handlerAction">
         /// The handler action.
         /// </param>
-        public LambdaFailedDeliveryStrategy(Action<IFailedConsumingContext> handlerAction)
+        public LambdaFailedDeliveryStrategy(Action<IFailedConsumingContext> handlerAction, ILogger<LambdaFailedDeliveryStrategy> logger)
         {
             this._handlerAction = handlerAction;
+            this.logger = logger;
         }
-
-        #endregion
-
-        #region Public Methods and Operators
 
         /// <summary>
         /// The handle.
@@ -58,11 +41,12 @@ namespace Contour.Receiving
             }
             catch (Exception ex)
             {
-                LogManager.GetCurrentClassLogger().
-                    ErrorFormat("Unable to handle failed message [{0}].", ex, failedConsumingContext.Delivery.Label);
+                this.logger.LogError(
+                    ex,
+                    "Unable to handle failed message [{Label}].", 
+                    failedConsumingContext.Delivery.Label);
             }
         }
 
-        #endregion
     }
 }

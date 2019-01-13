@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 
 namespace Contour.Transport.RabbitMQ.Internal
@@ -16,6 +17,6 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// <returns>
         /// The <see cref="IProducerSelector"/>.
         /// </returns>
-        IProducerSelector Build(IEnumerable<IProducer> items);
+        IProducerSelector Build(IEnumerable<IProducer> items, ILoggerFactory loggerFactory);
     }
 }

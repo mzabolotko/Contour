@@ -11,6 +11,8 @@ using NUnit.Framework;
 
 using Queue = Contour.Transport.RabbitMQ.Topology.Queue;
 using FluentAssertions.Extensions;
+using Contour.Receiving;
+using Microsoft.Extensions.Logging;
 
 namespace Contour.RabbitMq.Tests
 {
@@ -36,6 +38,21 @@ namespace Contour.RabbitMq.Tests
             {
                 var waitHandle = new AutoResetEvent(false);
 
+                var strategyMock = new Moq.Mock<IFailedDeliveryStrategy>();
+                strategyMock
+                    .Setup(sm => sm.Handle(Moq.It.IsAny<IFailedConsumingContext>()))
+                    .Callback<IFailedConsumingContext>(
+                        d =>
+                        {
+                            waitHandle.Set();
+                            d.Accept();
+                        });
+
+                var builderMock = new Moq.Mock<IFailedDeliveryStrategyBuilder>();
+                builderMock
+                    .Setup(bm => bm.Build(Moq.It.IsAny<ILoggerFactory>()))
+                    .Returns(strategyMock.Object);
+
                 IBus producer = this.StartBus("producer", cfg => cfg.Route("boo"));
 
                 this.StartBus(
@@ -46,12 +63,7 @@ namespace Contour.RabbitMq.Tests
                                 {
                                 })
                         .RequiresAccept()
-                        .OnFailed(
-                                   d =>
-                                       {
-                                           waitHandle.Set();
-                                           d.Accept();
-                                       }));
+                        .OnFailed(builderMock.Object));
 
                 producer.Emit("boo", new FooMessage(13));
 
@@ -112,6 +124,21 @@ namespace Contour.RabbitMq.Tests
             [Test]
             public void should_move_messages_to_separate_queue()
             {
+                var strategyMock = new Moq.Mock<IFailedDeliveryStrategy>();
+                strategyMock
+                    .Setup(sm => sm.Handle(Moq.It.IsAny<IFailedConsumingContext>()))
+                    .Callback<IFailedConsumingContext>(
+                        d =>
+                        {
+                            d.Forward("all.broken", d.BuildFaultMessage());
+                            d.Accept();
+                        });
+
+                var builderMock = new Moq.Mock<IFailedDeliveryStrategyBuilder>();
+                builderMock
+                    .Setup(bm => bm.Build(Moq.It.IsAny<ILoggerFactory>()))
+                    .Returns(strategyMock.Object);
+
                 IBus producer = this.StartBus("producer", cfg => cfg.Route("boo"));
 
                 this.StartBus(
@@ -127,12 +154,7 @@ namespace Contour.RabbitMq.Tests
                                             b.Topology.Bind(e, q);
                                             return e;
                                         });
-                            cfg.OnFailed(
-                                d =>
-                                    {
-                                        d.Forward("all.broken", d.BuildFaultMessage());
-                                        d.Accept();
-                                    });
+                            cfg.UseFailedDeliveryStrategyBuilder(builderMock.Object);
 
                             cfg.On<BooMessage>("boo")
                                 .ReactWith((m, ctx) => { throw new IOException(); })
@@ -168,6 +190,36 @@ namespace Contour.RabbitMq.Tests
             [Test]
             public void should_move_messages_to_separate_queues()
             {
+                var booStrategyMock = new Moq.Mock<IFailedDeliveryStrategy>();
+                booStrategyMock
+                    .Setup(sm => sm.Handle(Moq.It.IsAny<IFailedConsumingContext>()))
+                    .Callback<IFailedConsumingContext>(
+                        d =>
+                        {
+                            d.Forward("boo.broken", d.BuildFaultMessage());
+                            d.Accept();
+                        });
+
+                var booBuilderMock = new Moq.Mock<IFailedDeliveryStrategyBuilder>();
+                booBuilderMock
+                    .Setup(bm => bm.Build(Moq.It.IsAny<ILoggerFactory>()))
+                    .Returns(booStrategyMock.Object);
+
+                var fooStrategyMock = new Moq.Mock<IFailedDeliveryStrategy>();
+                fooStrategyMock
+                    .Setup(sm => sm.Handle(Moq.It.IsAny<IFailedConsumingContext>()))
+                    .Callback<IFailedConsumingContext>(
+                        d =>
+                        {
+                            d.Forward("foo.broken", d.BuildFaultMessage());
+                            d.Accept();
+                        });
+
+                var fooBuilderMock = new Moq.Mock<IFailedDeliveryStrategyBuilder>();
+                fooBuilderMock
+                    .Setup(bm => bm.Build(Moq.It.IsAny<ILoggerFactory>()))
+                    .Returns(fooStrategyMock.Object);
+
                 IBus producer = this.StartBus(
                     "producer",
                     cfg =>
@@ -203,22 +255,12 @@ namespace Contour.RabbitMq.Tests
                             cfg.On<BooMessage>("boo")
                                 .ReactWith((m, ctx) => { throw new IOException(); })
                                 .RequiresAccept()
-                                .OnFailed(
-                                    d =>
-                                        {
-                                            d.Forward("boo.broken", d.BuildFaultMessage());
-                                            d.Accept();
-                                        });
+                                .OnFailed(booBuilderMock.Object);
 
                             cfg.On<BooMessage>("foo")
                                 .ReactWith((m, ctx) => { throw new IOException(); })
                                 .RequiresAccept()
-                                .OnFailed(
-                                    d =>
-                                        {
-                                            d.Forward("foo.broken", d.BuildFaultMessage());
-                                            d.Accept();
-                                        });
+                                .OnFailed(fooBuilderMock.Object);
                         });
 
                 producer.Emit("boo", new FooMessage(13));

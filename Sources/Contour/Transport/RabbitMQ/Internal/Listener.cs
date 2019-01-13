@@ -1,23 +1,25 @@
-﻿using Contour.Transport.RabbitMQ.Topology;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+
+using Contour.Helpers;
+using Contour.Helpers.Timing;
+using Contour.Receiving;
+using Contour.Receiving.Consumers;
+using Contour.Validation;
 
 namespace Contour.Transport.RabbitMQ.Internal
 {
-    using System;
-    using System.Collections.Concurrent;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Common.Logging;
-    using Helpers;
-    using Helpers.Timing;
-    using Receiving;
-    using Receiving.Consumers;
-    using Validation;
     using global::RabbitMQ.Client.Events;
+    using Microsoft.Extensions.Logging;
 
     /// <summary>
     /// Слушатель канала.
@@ -53,7 +55,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// <summary>
         /// Журнал работы.
         /// </summary>
-        private readonly ILog logger;
+        private readonly ILogger logger;
 
         /// <summary>
         /// Реестр механизмов проверки сообщений.
@@ -77,6 +79,9 @@ namespace Contour.Transport.RabbitMQ.Internal
         private ITicketTimer ticketTimer;
         private ConcurrentBag<Task> workers;
 
+        private readonly IUnhandledDeliveryStrategy unhandledDeliveryStrategy;
+        private readonly IFailedDeliveryStrategy failedDeliveryStrategy;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Listener"/> class. 
         /// </summary>
@@ -95,7 +100,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// <param name="validatorRegistry">
         /// Реестр механизмов проверки сообщений.
         /// </param>
-        public Listener(IBusContext busContext, IRabbitConnection connection, ISubscriptionEndpoint endpoint, RabbitReceiverOptions receiverOptions, MessageValidatorRegistry validatorRegistry)
+        public Listener(IBusContext busContext, IRabbitConnection connection, ISubscriptionEndpoint endpoint, RabbitReceiverOptions receiverOptions, MessageValidatorRegistry validatorRegistry, ILoggerFactory loggerFactory)
         {
             this.busContext = busContext;
             this.connection = connection;
@@ -108,7 +113,11 @@ namespace Contour.Transport.RabbitMQ.Internal
 
             this.messageHeaderStorage = this.ReceiverOptions.GetIncomingMessageHeaderStorage().Value;
 
-            this.logger = LogManager.GetLogger($"{this.GetType().FullName}({this.BrokerUrl}, {this.GetHashCode()})");
+            this.unhandledDeliveryStrategy = this.ReceiverOptions.GetUnhandledDeliveryStrategyBuilder().Build(loggerFactory);
+            this.failedDeliveryStrategy = this.ReceiverOptions.GetFailedDeliveryStrategyBuilder().Build(loggerFactory);
+
+            this.logger = loggerFactory.CreateLogger($"{this.GetType().FullName}({this.BrokerUrl}, {this.GetHashCode()})");
+
         }
 
         public event EventHandler<ListenerStoppedEventArgs> Stopped = (sender, args) => { };
@@ -250,7 +259,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                     return;
                 }
 
-                this.logger.InfoFormat("Starting consuming on [{0}].", this.endpoint.ListeningSource);
+                this.logger.LogInformation("Starting consuming on [{ListeningSource}].", this.endpoint.ListeningSource);
 
                 this.cancellationTokenSource = new CancellationTokenSource();
                 this.ticketTimer = new RoughTicketTimer(TimeSpan.FromSeconds(1));
@@ -269,7 +278,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                                 TaskScheduler.Default)));
 
                 this.isConsuming = true;
-                this.logger.Trace("Listener started successfully");
+                this.logger.LogTrace("Listener started successfully");
             }
         }
 
@@ -303,16 +312,24 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </param>
         private void Deliver(RabbitDelivery delivery)
         {
-            this.logger.Trace(m => m("Received delivery labeled [{0}] from exchange [{1}] with consumer [{2}].", delivery.Label, delivery.Args.Exchange, delivery.Args.ConsumerTag));
+            this.logger.LogTrace(
+                "Received delivery labeled [{Label}] from exchange [{Exchange}] with consumer [{ConsumerTag}].", 
+                delivery.Label, 
+                delivery.Args.Exchange, 
+                delivery.Args.ConsumerTag);
 
             if (delivery.Headers.ContainsKey(Headers.OriginalMessageId))
             {
-                this.logger.Trace(m => m("Сквозной идентификатор сообщения [{0}].", Headers.GetString(delivery.Headers, Headers.OriginalMessageId)));
+                this.logger.LogTrace(
+                    "Сквозной идентификатор сообщения [{OriginalMessageId}].", 
+                    Headers.GetString(delivery.Headers, Headers.OriginalMessageId));
             }
 
             if (delivery.Headers.ContainsKey(Headers.Breadcrumbs))
             {
-                this.logger.Trace(m => m("Сообщение было обработано в конечных точках: [{0}].", Headers.GetString(delivery.Headers, Headers.Breadcrumbs)));
+                this.logger.LogTrace(
+                    "Сообщение было обработано в конечных точках: [{Breadcrumbs}].",
+                    Headers.GetString(delivery.Headers, Headers.Breadcrumbs));
             }
 
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -337,7 +354,10 @@ namespace Contour.Transport.RabbitMQ.Internal
             }
 
             stopwatch.Stop();
-            this.logger.Trace(m => m("Message labeled [{0}] processed in {1} ms.", delivery.Label, stopwatch.ElapsedMilliseconds));
+            this.logger.LogTrace(
+                "Message labeled [{Label}] processed in {ElapsedMilliseconds} ms.", 
+                delivery.Label, 
+                stopwatch.ElapsedMilliseconds);
         }
 
         private void InternalStop(OperationStopReason reason)
@@ -350,7 +370,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 }
 
                 this.isConsuming = false;
-                this.logger.InfoFormat("Stopping consuming on [{0}].", this.endpoint.ListeningSource);
+                this.logger.LogInformation("Stopping consuming on [{ListeningSource}].", this.endpoint.ListeningSource);
 
                 this.cancellationTokenSource.Cancel(true);
 
@@ -386,7 +406,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 this.expectations.Values.ForEach(e => e.Cancel());
 
                 this.Stopped(this, new ListenerStoppedEventArgs(this, reason));
-                this.logger.Trace("Listener stopped successfully");
+                this.logger.LogTrace("Listener stopped successfully");
             }
         }
 
@@ -433,12 +453,15 @@ namespace Contour.Transport.RabbitMQ.Internal
             }
             catch (OperationCanceledException)
             {
-                this.logger.Info($"Consume operation of listener has been canceled");
+                this.logger.LogInformation($"Consume operation of listener has been canceled");
             }
             catch (Exception ex)
             {
-                this.logger.Error(
-                    $"Listener of [{this.endpoint.ListeningSource}] at [{this.BrokerUrl}] has failed due to [{ex.Message}]");
+                this.logger.LogError(
+                    ex,
+                    "Listener of [{ListeningSource}] at [{BrokerUrl}] has failed due to [{Message}]",
+                    this.endpoint.ListeningSource,
+                    this.BrokerUrl);
             }
         }
 
@@ -484,26 +507,28 @@ namespace Contour.Transport.RabbitMQ.Internal
                 this.ReceiverOptions.IsAcceptRequired(),
                 consumer);
 
-            this.logger.Trace(
-                $"A consumer tagged [{tag}] has been registered in listener of [{string.Join(",", this.AcceptedLabels)}]");
+            this.logger.LogTrace(
+                "A consumer tagged [{Tag}] has been registered in listener of [{Labels}]",
+                tag,
+                string.Join(",", this.AcceptedLabels));
 
             return consumer;
         }
 
         private void OnChannelShutdown(IChannel channel, ShutdownEventArgs args)
         {
-            this.logger.Trace($"Channel shutdown details: {args}");
+            this.logger.LogTrace("Channel shutdown details: {Args}", args);
 
             if (args.Initiator != ShutdownInitiator.Application)
             {
                 if (this.StopOnChannelShutdown)
                 {
-                    this.logger.Warn("The listener is configured to be stopped on channel failure");
+                    this.logger.LogWarning("The listener is configured to be stopped on channel failure");
                     this.InternalStop(OperationStopReason.Terminate);
                 }
                 else
                 {
-                    this.logger.Warn("The underlying channel has been closed, recovering the listener...");
+                    this.logger.LogWarning("The underlying channel has been closed, recovering the listener...");
 
                     this.StopConsuming();
                     this.StartConsuming();
@@ -522,10 +547,14 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </param>
         private void OnFailure(RabbitDelivery delivery, Exception exception)
         {
-            this.logger.Warn(m => m("Failed to process message labeled [{0}] on queue [{1}].", delivery.Label, this.endpoint.ListeningSource), exception);
+            this.logger.LogWarning(
+                exception,
+                "Failed to process message labeled [{Label}] on queue [{ListeningSource}].", 
+                delivery.Label, 
+                this.endpoint.ListeningSource);
 
-            this.ReceiverOptions.GetFailedDeliveryStrategy()
-                .Value.Handle(new RabbitFailedConsumingContext(delivery, exception));
+            this.failedDeliveryStrategy.Handle(
+                new RabbitFailedConsumingContext(delivery, exception));
         }
 
         /// <summary>
@@ -549,10 +578,12 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </param>
         private void OnUnhandled(RabbitDelivery delivery)
         {
-            this.logger.Warn(m => m("No handler for message labeled [{0}] on queue [{1}].", delivery.Label, this.endpoint.ListeningSource));
+            this.logger.LogWarning(
+                "No handler for message labeled [{Label}] on queue [{ListeningSource}].", 
+                delivery.Label, 
+                this.endpoint.ListeningSource);
 
-            this.ReceiverOptions.GetUnhandledDeliveryStrategy()
-                .Value.Handle(new RabbitUnhandledConsumingContext(delivery));
+            this.unhandledDeliveryStrategy.Handle(new RabbitUnhandledConsumingContext(delivery));
         }
 
         /// <summary>

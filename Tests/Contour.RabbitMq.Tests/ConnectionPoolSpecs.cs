@@ -11,6 +11,7 @@ using Contour.Transport.RabbitMQ.Internal;
 using Contour.Transport.RabbitMQ.Topology;
 using FluentAssertions;
 using FluentAssertions.Extensions;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace Contour.RabbitMq.Tests
@@ -21,6 +22,11 @@ namespace Contour.RabbitMq.Tests
     {
         public void should_create_connections_after_drop()
         {
+            var loggerFactoryMock = new Moq.Mock<ILoggerFactory>();
+            var loggerMock = new Moq.Mock<ILogger>();
+            loggerFactoryMock.Setup(lfm => lfm.CreateLogger(Moq.It.IsAny<string>())).Returns(loggerMock.Object);
+
+
             var bus = this.ConfigureBus(
                    "Test",
                    cfg =>
@@ -31,7 +37,7 @@ namespace Contour.RabbitMq.Tests
                                builder => builder.ListenTo(builder.Topology.Declare(Queue.Named("one.queue"))));
                    });
 
-            var pool = new RabbitConnectionPool(bus);
+            var pool = new RabbitConnectionPool(bus, loggerFactoryMock.Object);
             var source = new CancellationTokenSource();
             var conString = string.Empty;
 
@@ -46,6 +52,10 @@ namespace Contour.RabbitMq.Tests
         [Test]
         public void should_remove_disposed_connections()
         {
+            var loggerFactoryMock = new Moq.Mock<ILoggerFactory>();
+            var loggerMock = new Moq.Mock<ILogger>();
+            loggerFactoryMock.Setup(lfm => lfm.CreateLogger(Moq.It.IsAny<string>())).Returns(loggerMock.Object);
+
             const int Count = 5;
             var bus = this.ConfigureBus(
                    "Test",
@@ -57,7 +67,7 @@ namespace Contour.RabbitMq.Tests
                                builder => builder.ListenTo(builder.Topology.Declare(Queue.Named("one.queue"))));
                    });
 
-            var pool = new RabbitConnectionPool(bus);
+            var pool = new RabbitConnectionPool(bus, loggerFactoryMock.Object);
 
             var i = 0;
             var conString = bus.Configuration.ConnectionString;
@@ -84,6 +94,9 @@ namespace Contour.RabbitMq.Tests
         [Test]
         public void should_cancel_running_get_operation()
         {
+            var loggerFactoryMock = new Moq.Mock<ILoggerFactory>();
+            var loggerMock = new Moq.Mock<ILogger>();
+            loggerFactoryMock.Setup(lfm => lfm.CreateLogger(Moq.It.IsAny<string>())).Returns(loggerMock.Object);
             const string ConString = "amqp://10.10.10.10/integration";
 
             var bus = this.ConfigureBus(
@@ -94,7 +107,7 @@ namespace Contour.RabbitMq.Tests
                        cfg.Route("some.label");
                     });
 
-            var pool = new RabbitConnectionPool(bus);
+            var pool = new RabbitConnectionPool(bus, loggerFactoryMock.Object);
             var source = new CancellationTokenSource();
             
             // ReSharper disable once MethodSupportsCancellation

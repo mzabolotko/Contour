@@ -1,23 +1,29 @@
-﻿using Common.Logging;
+﻿using Microsoft.Extensions.Logging;
 
 namespace Contour.Transport.RabbitMQ.Internal
 {
     internal class RabbitConnectionProvider : IConnectionProvider<IRabbitConnection>
     {
-        private readonly ILog logger = LogManager.GetLogger<RabbitConnectionProvider>();
+        private readonly ILogger<RabbitConnectionProvider> logger;
         private readonly IEndpoint endpoint;
         private readonly IBusContext context;
+        private readonly ILoggerFactory loggerFactory;
 
-        public RabbitConnectionProvider(IBusContext context)
+        public RabbitConnectionProvider(IBusContext context, ILoggerFactory loggerFactory)
         {
             this.endpoint = context.Endpoint;
             this.context = context;
+            this.loggerFactory = loggerFactory;
+            this.logger = this.loggerFactory.CreateLogger<RabbitConnectionProvider>();
         }
 
         public IRabbitConnection Create(string connectionString)
         {
-            this.logger.Trace($"Creating a new connection for endpoint [{this.endpoint}] at [{connectionString}]");
-            return new RabbitConnection(this.endpoint, connectionString, this.context);
+            this.logger.LogTrace(
+                "Creating a new connection for endpoint [{Endpoint}] at [{ConnectionString}]", 
+                this.endpoint, 
+                connectionString);
+            return new RabbitConnection(this.endpoint, connectionString, this.context, this.loggerFactory);
         }
     }
 }

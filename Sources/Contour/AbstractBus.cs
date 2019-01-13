@@ -1,16 +1,18 @@
-﻿namespace Contour
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Common.Logging;
-    using Configuration;
-    using Receiving;
-    using Sending;
-    using Serialization;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
+using Microsoft.Extensions.Logging;
+
+using Contour. Configuration;
+using Contour.Receiving;
+using Contour.Sending;
+using Contour.Serialization;
+
+namespace Contour
+{
     /// <summary>
     /// Шина сообщений, которая не знает о транспортном уровне.
     /// </summary>
@@ -26,10 +28,10 @@
         /// </summary>
         private readonly BusConfiguration configuration;
 
-        /// <summary>
-        /// Журнал шины сообщений.
-        /// </summary>
-        private readonly ILog logger = LogManager.GetLogger<AbstractBus>();
+        private readonly ILogger<AbstractBus> logger;
+
+        protected readonly ILoggerFactory loggerFactory;
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AbstractBus"/> class.
@@ -37,6 +39,9 @@
         /// <param name="configuration">Конфигурация шины сообщений.</param>
         protected AbstractBus(BusConfiguration configuration)
         {
+            this.loggerFactory = configuration.LoggerFactoryProvider();
+            this.logger = this.loggerFactory.CreateLogger<AbstractBus>();
+
             this.configuration = configuration;
 
             if (this.configuration.LifecycleHandler != null)
@@ -619,10 +624,10 @@
         {
             this.Started(this, null);
 
-            this.logger.InfoFormat(
-                "Started [{0}] with endpoint [{1}].".FormatEx(
+            this.logger.LogInformation(
+                "Started [{Name}] with endpoint [{Endpoint}].", 
                     this.GetType().Name, 
-                    this.Endpoint));
+                    this.Endpoint);
         }
 
         /// <summary>
@@ -630,10 +635,10 @@
         /// </summary>
         protected virtual void OnStarting()
         {
-            this.logger.InfoFormat(
-                "Starting [{0}] with endpoint [{1}].".FormatEx(
+            this.logger.LogInformation(
+                "Starting [{Name}] with endpoint [{Endpoint}].",
                     this.GetType().Name, 
-                    this.Endpoint));
+                    this.Endpoint);
 
             this.Starting(this, null);
         }
@@ -645,10 +650,10 @@
         {
             this.Stopped(this, null);
 
-            this.logger.InfoFormat(
-                "Stopped [{0}] with endpoint [{1}].".FormatEx(
+            this.logger.LogInformation(
+                "Stopped [{Name}] with endpoint [{Endpoint}].",
                     this.GetType().Name, 
-                    this.Endpoint));
+                    this.Endpoint);
         }
 
         /// <summary>
@@ -656,10 +661,10 @@
         /// </summary>
         protected virtual void OnStopping()
         {
-            this.logger.InfoFormat(
-                "Stopping [{0}] with endpoint [{1}].".FormatEx(
+            this.logger.LogInformation(
+                "Stopping [{Name}] with endpoint [{Endpoint}].",
                     this.GetType().Name, 
-                    this.Endpoint));
+                    this.Endpoint);
 
             this.IsStarted = false;
 

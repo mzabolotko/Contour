@@ -1,4 +1,7 @@
-﻿## 2.0.0-rc2
+﻿## 2.0.0-rc3
+    + Migrating from Common.Logging to Microsoft.Logging.Extensions
+
+## 2.0.0-rc2
     + Migrating from .NET Framework 4.7.1 to .NET Standard 2.1
     + Removed Ninject dependency.
     + Updated Common.Logging and Fluent Assertions.

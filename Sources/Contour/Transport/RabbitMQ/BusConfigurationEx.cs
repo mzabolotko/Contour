@@ -82,7 +82,9 @@ namespace Contour.Transport.RabbitMQ
                 ParallelismLevel = 1,
                 EndpointBuilder = RabbitBusDefaults.SubscriptionEndpointBuilder,
                 QoS = new QoSParams(50, 0),
-                ReuseConnection = true
+                ReuseConnection = true,
+                UnhandledDeliveryStrategyBuilder = RabbitBusDefaults.UnhandledDeliveryStrategyBuilder,
+                FailedDeliveryStrategyBuilder = RabbitBusDefaults.FailedDeliveryStrategyBuilder
             };
 
             c.UseMessageLabelHandler(new DefaultRabbitMessageLabelHandler());
@@ -109,19 +111,6 @@ namespace Contour.Transport.RabbitMQ
 
             c.Route("document.Contour.unhandled").Persistently().ConfiguredWith(faultRouteResolverBuilder).ReuseConnection();
             c.Route("document.Contour.failed").Persistently().ConfiguredWith(faultRouteResolverBuilder).ReuseConnection();
-
-            c.OnUnhandled(
-                d =>
-                    {
-                        d.Forward("document.Contour.unhandled", d.BuildFaultMessage());
-                        d.Accept();
-                    });
-            c.OnFailed(
-                d =>
-                    {
-                        d.Forward("document.Contour.failed", d.BuildFaultMessage());
-                        d.Accept();
-                    });
 
             return busConfigurator;
         }

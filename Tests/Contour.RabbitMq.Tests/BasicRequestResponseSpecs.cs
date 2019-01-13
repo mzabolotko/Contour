@@ -78,53 +78,6 @@ namespace Contour.RabbitMq.Tests
             }
         }
 
-        [TestFixture(Description = "When replying to message without reply address")]
-        [Category("Integration")]
-        public class when_replying_to_message_without_reply_address : RabbitMqFixture
-        {
-            /// <summary>
-            /// The should_not_throw_bus_configuration_exception.
-            /// </summary>
-            [Test(Description = "Shouldn't throw BusConfigurationException")]
-            public void should_not_throw_bus_configuration_exception()
-            {
-                Exception exception = null;
-                var waitHandle = new ManualResetEvent(false);
-
-                IBus producer = this.StartBus(
-                    "producer",
-                    cfg => cfg.Route("dummy.request"));
-
-                this.StartBus(
-                    "consumer",
-                    cfg =>
-                        {
-                            cfg.OnFailed(
-                                ctx =>
-                                    {
-                                        exception = ctx.Exception;
-                                        ctx.Accept();
-                                        waitHandle.Set();
-                                    });
-
-                            cfg.On<DummyRequest>("dummy.request")
-                                .ReactWith(
-                                    (m, ctx) =>
-                                        {
-                                            ctx.Reply(new DummyResponse(m.Num * 2));
-                                            ctx.Accept();
-                                            waitHandle.Set();
-                                        });
-                        });
-
-                producer.Emit("dummy.request", new DummyRequest(13));
-
-                waitHandle.WaitOne(3.Seconds()).Should().BeTrue();
-
-                exception.Should().BeNull();
-            }
-        }
-
         /// <summary>
         /// The when_request_is_expired.
         /// </summary>

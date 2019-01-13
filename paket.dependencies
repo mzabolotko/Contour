@@ -1,8 +1,8 @@
 source https://api.nuget.org/v3/index.json
 
-nuget Common.Logging 3.4.1
 nuget RabbitMQ.Client 5.0.1
 nuget System.Configuration.ConfigurationManager 4.5.0
+nuget Microsoft.Extensions.Logging 2.2.0
 
 nuget FAKE 5.0.0
 nuget RestSharp 105.2.3

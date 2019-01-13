@@ -4,13 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Common.Logging;
 using Contour.Configuration;
 using Contour.Filters;
 using Contour.Helpers.CodeContracts;
 using Contour.Receiving;
 using Contour.Sending;
 using Contour.Transport.RabbitMQ.Topology;
+using Microsoft.Extensions.Logging;
 
 namespace Contour.Transport.RabbitMQ.Internal
 {
@@ -19,7 +19,7 @@ namespace Contour.Transport.RabbitMQ.Internal
     /// </summary>
     internal class RabbitSender : AbstractSender
     {
-        private readonly ILog logger;
+        private readonly ILogger logger;
         private readonly RabbitBus bus;
         private readonly IConnectionPool<IRabbitConnection> connectionPool;
         private readonly ConcurrentQueue<IProducer> producers = new ConcurrentQueue<IProducer>();
@@ -42,14 +42,13 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// <param name="filters">
         /// Фильтры сообщений.
         /// </param>
-        public RabbitSender(RabbitBus bus, ISenderConfiguration configuration, IConnectionPool<IRabbitConnection> connectionPool, IEnumerable<IMessageExchangeFilter> filters)
-            : base(bus.Endpoint, configuration, filters)
+        public RabbitSender(RabbitBus bus, ISenderConfiguration configuration, IConnectionPool<IRabbitConnection> connectionPool, IEnumerable<IMessageExchangeFilter> filters, ILoggerFactory loggerFactory)
+            : base(bus.Endpoint, configuration, filters, loggerFactory)
         {
             this.bus = bus;
             this.connectionPool = connectionPool;
             this.senderOptions = (RabbitSenderOptions)this.Configuration.Options;
-
-            this.logger = LogManager.GetLogger($"{this.GetType().FullName}({this.bus.Endpoint}, {this.Configuration.Label})");
+            this.logger = loggerFactory.CreateLogger($"{this.GetType().FullName}({this.bus.Endpoint}, {this.Configuration.Label})");
         }
 
         /// <summary>
@@ -67,7 +66,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </summary>
         public override void Dispose()
         {
-            this.logger.Trace(m => m("Disposing sender of [{0}]", this.Configuration.Label));
+            this.logger.LogTrace("Disposing sender of [{Label}]", this.Configuration.Label);
             this.Stop();
         }
 
@@ -81,7 +80,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 return;
             }
 
-            this.logger.Trace(m => m("Starting sender of [{0}]", this.Configuration.Label));
+            this.logger.LogTrace("Starting sender of [{Label}]", this.Configuration.Label);
 
             this.StartProducers();
             this.IsStarted = true;
@@ -97,7 +96,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 return;
             }
 
-            this.logger.Trace(m => m("Stopping sender of [{0}]", this.Configuration.Label));
+            this.logger.LogTrace("Stopping sender of [{Label}]", this.Configuration.Label);
 
             this.StopProducers();
             this.faultTolerantProducer.Dispose();
@@ -120,7 +119,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </summary>
         private void StartProducers()
         {
-            this.logger.Trace(m => m("Starting producers for sender of [{0}]", this.Configuration.Label));
+            this.logger.LogTrace("Starting producers for sender of [{Label}]", this.Configuration.Label);
             this.Configure();
 
             foreach (var producer in this.producers)
@@ -134,13 +133,13 @@ namespace Contour.Transport.RabbitMQ.Internal
             this.BuildProducers();
             var builder = this.senderOptions.GetProducerSelectorBuilder();
 
-            this.producerSelector = builder.Build(this.producers);
+            this.producerSelector = builder.Build(this.producers, this.loggerFactory);
             
             var sendAttempts = this.senderOptions.GetFailoverAttempts() ?? 1;
             var maxRetryDelay = this.senderOptions.GetMaxRetryDelay().GetValueOrDefault();
             var resetDelay = this.senderOptions.GetInactivityResetDelay().GetValueOrDefault();
 
-            this.faultTolerantProducer = new FaultTolerantProducer(this.producerSelector, sendAttempts, maxRetryDelay, resetDelay);
+            this.faultTolerantProducer = new FaultTolerantProducer(this.producerSelector, sendAttempts, maxRetryDelay, resetDelay, this.loggerFactory.CreateLogger<FaultTolerantProducer>());
         }
 
         /// <summary>
@@ -148,7 +147,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </summary>
         private void StopProducers()
         {
-            this.logger.Trace(m => m("Stopping producers for sender of [{0}]", this.Configuration.Label));
+            this.logger.LogTrace("Stopping producers for sender of [{Label}]", this.Configuration.Label);
 
             IProducer producer;
             while (!this.producers.IsEmpty && this.producers.TryDequeue(out producer))
@@ -157,12 +156,13 @@ namespace Contour.Transport.RabbitMQ.Internal
                 {
                     producer.Stop();
                     producer.Dispose();
-                    this.logger.Trace("Producer stopped successfully");
+                    this.logger.LogTrace("Producer stopped successfully");
                 }
                 catch (Exception ex)
                 {
-                    this.logger.Error(
-                        $"Failed to stop producer [{producer}] in sender of [{this.Configuration.Label}] due to {ex.Message}");
+                    this.logger.LogError(
+                        ex,
+                        "Failed to stop producer [{Producer}] in sender of [{Label}] due to {Message}", producer, this.Configuration.Label, ex.Message);
                 }
             }
         }
@@ -172,8 +172,8 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </summary>
         private void BuildProducers()
         {
-            this.logger.Trace(
-                $"Building producers of [{this.Configuration.Label}]:\r\n\t{string.Join("\r\n\t", this.senderOptions.RabbitConnectionString.Select(url => $"Producer({this.Configuration.Label}): URL\t=>\t{url}"))}");
+            this.logger.LogTrace(
+                "Building producers of [{Label}]: [{Urls}]", this.Configuration.Label, string.Join(",", this.senderOptions.RabbitConnectionString.Select(url => url)));
 
             foreach (var url in this.senderOptions.RabbitConnectionString)
             {
@@ -183,11 +183,11 @@ namespace Contour.Transport.RabbitMQ.Internal
 
         private IProducer EnlistProducer(string url)
         {
-            this.logger.Trace($"Enlisting a new producer of [{this.Configuration.Label}] at URL=[{url}]...");
+            this.logger.LogTrace("Enlisting a new producer of [{Label}] at URL=[{url}]...", this.Configuration.Label, url);
             var producer = this.BuildProducer(url);
 
             this.producers.Enqueue(producer);
-            this.logger.Trace($"A producer of [{producer.Label}] at URL=[{producer.BrokerUrl}] has been enlisted");
+            this.logger.LogTrace("A producer of [{Label}] at URL=[{BrokerUrl}] has been enlisted", producer.Label, producer.BrokerUrl);
 
             return producer;
         }
@@ -199,7 +199,7 @@ namespace Contour.Transport.RabbitMQ.Internal
 
             var source = new CancellationTokenSource();
             var connection = this.connectionPool.Get(url, reuseConnection, source.Token);
-            this.logger.Trace($"Using connection [{connection.Id}] at URL=[{url}] to resolve a producer");
+            this.logger.LogTrace("Using connection [{Id}] at URL=[{Url}] to resolve a producer", connection.Id, url);
 
             using (var topologyBuilder = new TopologyBuilder(connection))
             {
@@ -218,18 +218,25 @@ namespace Contour.Transport.RabbitMQ.Internal
                     connection,
                     this.Configuration.Label,
                     routeResolver,
-                    this.Configuration.Options.IsConfirmationRequired());
+                    this.Configuration.Options.IsConfirmationRequired(),
+                    this.loggerFactory);
 
                 if (this.Configuration.RequiresCallback)
                 {
                     var callbackConfiguration = this.CreateCallbackReceiverConfiguration(url);
                     var receiver = this.bus.RegisterReceiver(callbackConfiguration, true);
 
-                    this.logger.Trace(
-                        $"A sender of [{this.Configuration.Label}] requires a callback configuration; registering a receiver of [{callbackConfiguration.Label}] with connection string [{callbackConfiguration.Options.GetConnectionString()}]");
+                    this.logger.LogTrace(
+                        "A sender of [{Label}] requires a callback configuration; registering a receiver of [{ReceiverLabel}] with connection string [{ConnectionString}]", 
+                        this.Configuration.Label, 
+                        callbackConfiguration.Label, 
+                        callbackConfiguration.Options.GetConnectionString());
 
-                    this.logger.Trace(
-                        $"A new callback receiver of [{callbackConfiguration.Label}] with connection string [{callbackConfiguration.Options.GetConnectionString()}] has been successfully registered, getting one of its listeners with URL=[{producer.BrokerUrl}]...");
+                    this.logger.LogTrace(
+                        "A new callback receiver of [{Label}] with connection string [{ConnectionString}] has been successfully registered, getting one of its listeners with URL=[{BrokerUrl}]...",
+                        callbackConfiguration.Label,
+                        callbackConfiguration.Options.GetConnectionString(),
+                        producer.BrokerUrl);
 
                     var listener = receiver.GetListener(l => l.BrokerUrl == producer.BrokerUrl);
 
@@ -239,14 +246,18 @@ namespace Contour.Transport.RabbitMQ.Internal
                             $"Unable to find a suitable listener for receiver {receiver}");
                     }
 
-                    this.logger.Trace(
-                        $"A listener at URL=[{listener.BrokerUrl}] belonging to callback receiver of [{callbackConfiguration.Label}] acquired");
+                    this.logger.LogTrace(
+                        "A listener at URL=[{BrokerUrl}] belonging to callback receiver of [{ReveiverLabel}] acquired",
+                        listener.BrokerUrl,
+                        callbackConfiguration.Label);
                     
                     listener.StopOnChannelShutdown = true;
                     producer.UseCallbackListener(listener);
 
-                    this.logger.Trace(
-                        $"A producer of [{producer.Label}] at URL=[{producer.BrokerUrl}] has registered a callback listener successfully");
+                    this.logger.LogTrace(
+                        "A producer of [{Label}] at URL=[{BrokerUrl}] has registered a callback listener successfully",
+                        producer.Label,
+                        producer.BrokerUrl);
                 }
 
                 producer.StopOnChannelShutdown = true;
@@ -266,7 +277,9 @@ namespace Contour.Transport.RabbitMQ.Internal
                 return;
             }
 
-            this.logger.Warn($"Producer [{sender.GetHashCode()}] has been stopped and will be reenlisted");
+            this.logger.LogWarning(
+                "Producer [{HashCode}] has been stopped and will be reenlisted",
+                sender.GetHashCode());
 
             while (true)
             {
@@ -275,7 +288,9 @@ namespace Contour.Transport.RabbitMQ.Internal
                 {
                     if (sender == delistedProducer)
                     {
-                        this.logger.Trace($"Producer [{delistedProducer.GetHashCode()}] has been delisted");
+                        this.logger.LogTrace(
+                            "Producer [{HashCode}] has been delisted",
+                            delistedProducer.GetHashCode());
                         break;
                     }
 

@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
-using Common.Logging;
 using Contour.Configuration;
 using Contour.Sending;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 
 namespace Contour.Transport.RabbitMQ.Internal
@@ -19,9 +17,10 @@ namespace Contour.Transport.RabbitMQ.Internal
     /// </summary>
     internal sealed class Producer : IProducer
     {
-        private readonly ILog logger;
+        private readonly ILogger logger;
         private readonly IEndpoint endpoint;
         private readonly IRabbitConnection connection;
+        private readonly ILoggerFactory loggerFactory;
         private readonly ReaderWriterLockSlim slimLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         private CancellationTokenSource cancellationTokenSource;
         private IPublishConfirmationTracker confirmationTracker = new DummyPublishConfirmationTracker();
@@ -44,7 +43,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// <param name="confirmationIsRequired">
         /// Если <c>true</c> - тогда отправитель будет ожидать подтверждения о том, что сообщение было сохранено в брокере.
         /// </param>
-        public Producer(IEndpoint endpoint, IRabbitConnection connection, MessageLabel label, IRouteResolver routeResolver, bool confirmationIsRequired)
+        public Producer(IEndpoint endpoint, IRabbitConnection connection, MessageLabel label, IRouteResolver routeResolver, bool confirmationIsRequired, ILoggerFactory loggerFactory)
         {
             this.endpoint = endpoint;
 
@@ -53,8 +52,8 @@ namespace Contour.Transport.RabbitMQ.Internal
             this.Label = label;
             this.RouteResolver = routeResolver;
             this.ConfirmationIsRequired = confirmationIsRequired;
-
-            this.logger = LogManager.GetLogger($"{this.GetType().FullName}({this.BrokerUrl}, {this.Label}, {this.GetHashCode()})");
+            this.loggerFactory = loggerFactory;
+            this.logger = this.loggerFactory.CreateLogger($"{this.GetType().FullName}({this.BrokerUrl}, {this.Label}, {this.GetHashCode()})");
         }
 
         public event EventHandler<ProducerStoppedEventArgs> Stopped = (sender, args) => { };
@@ -96,7 +95,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </summary>
         public void Dispose()
         {
-            this.logger.Trace(m => m("Disposing producer of [{0}].", this.Label));
+            this.logger.LogTrace("Disposing producer of [{Label}].", this.Label);
             this.Stop();
         }
 
@@ -116,7 +115,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 try
                 {
                     var nativeRoute = (RabbitRoute)this.RouteResolver.Resolve(this.endpoint, message.Label);
-                    this.logger.Trace(m => m("Emitting message [{0}] through [{1}].", message.Label, nativeRoute));
+                    this.logger.LogTrace("Emitting message [{Label}] through [{NativeRoute}].", message.Label, nativeRoute);
                     Func<IBasicProperties, IDictionary<string, object>> propsVisitor = p => ExtractProperties(ref p, message.Headers);
 
                     var confirmation = this.confirmationTracker.Track();
@@ -193,7 +192,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         {
             try
             {
-                this.logger.Trace($"Starting producer [{this.GetHashCode()}] of [{this.Label}]");
+                this.logger.LogTrace("Starting producer [{HashCode}] of [{Label}]", this.GetHashCode(), this.Label);
                 this.slimLock.EnterWriteLock();
                 
                 this.cancellationTokenSource = new CancellationTokenSource();
@@ -204,14 +203,14 @@ namespace Contour.Transport.RabbitMQ.Internal
 
                 if (this.ConfirmationIsRequired)
                 {
-                    this.confirmationTracker = new PublishConfirmationTracker(this.Channel);
+                    this.confirmationTracker = new PublishConfirmationTracker(this.Channel, this.loggerFactory);
                     this.Channel.EnablePublishConfirmation();
                     this.Channel.OnConfirmation(this.confirmationTracker.HandleConfirmation);
                 }
 
                 this.CallbackListener?.StartConsuming();
 
-                this.logger.Trace($"Producer of [{this.Label}] started successfully");
+                this.logger.LogTrace("Producer of [{Label}] started successfully", this.Label);
             }
             finally
             {
@@ -303,7 +302,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         {
             try
             {
-                this.logger.Trace($"Stopping producer of [{this.Label}]");
+                this.logger.LogTrace("Stopping producer of [{Label}]", this.Label);
                 this.slimLock.EnterWriteLock();
                 
                 this.cancellationTokenSource.Cancel(true);
@@ -320,7 +319,7 @@ namespace Contour.Transport.RabbitMQ.Internal
                 }
                 
                 this.Stopped(this, new ProducerStoppedEventArgs(this, reason));
-                this.logger.Trace($"Producer of [{this.Label}] stopped successfully");
+                this.logger.LogTrace("Producer of [{Label}] stopped successfully", this.Label);
             }
             finally
             {
@@ -362,18 +361,18 @@ namespace Contour.Transport.RabbitMQ.Internal
 
         private void OnChannelShutdown(object sender, ShutdownEventArgs args)
         {
-            this.logger.Trace($"Channel shutdown details: {args}");
+            this.logger.LogTrace("Channel shutdown details: {Args}", args);
 
             if (args.Initiator != ShutdownInitiator.Application)
             {
                 if (this.StopOnChannelShutdown)
                 {
-                    this.logger.Warn("The producer is configured to be stopped on channel failure");
+                    this.logger.LogWarning("The producer is configured to be stopped on channel failure");
                     this.InternalStop(OperationStopReason.Terminate);
                 }
                 else
                 {
-                    this.logger.Warn("The underlying channel has been closed, recovering the producer...");
+                    this.logger.LogWarning("The underlying channel has been closed, recovering the producer...");
 
                     this.Stop();
                     this.Start();

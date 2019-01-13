@@ -10,6 +10,8 @@ using Contour.Validation;
 
 using NUnit.Framework;
 using FluentAssertions.Extensions;
+using Contour.Receiving;
+using Microsoft.Extensions.Logging;
 
 namespace Contour.RabbitMq.Tests
 {
@@ -109,6 +111,22 @@ namespace Contour.RabbitMq.Tests
                 var failed = new AutoResetEvent(false);
                 Exception exception = null;
 
+                var strategyMock = new Moq.Mock<IFailedDeliveryStrategy>();
+                strategyMock
+                    .Setup(sm => sm.Handle(Moq.It.IsAny<IFailedConsumingContext>()))
+                    .Callback<IFailedConsumingContext>(
+                        ctx =>
+                        {
+                            exception = ctx.Exception;
+                            failed.Set();
+                            ctx.Accept();
+                        });
+
+                var builderMock = new Moq.Mock<IFailedDeliveryStrategyBuilder>();
+                builderMock
+                    .Setup(bm => bm.Build(Moq.It.IsAny<ILoggerFactory>()))
+                    .Returns(strategyMock.Object);
+
                 IBus producer = this.StartBus(
                     "producer",
                     cfg =>
@@ -123,13 +141,7 @@ namespace Contour.RabbitMq.Tests
                         {
                             cfg.RegisterValidators(new MessageValidatorGroup(new IMessageValidator[] { new BooValidator(), new FooValidator() }));
 
-                            cfg.OnFailed(
-                                ctx =>
-                                    {
-                                        exception = ctx.Exception;
-                                        failed.Set();
-                                        ctx.Accept();
-                                    });
+                            cfg.UseFailedDeliveryStrategyBuilder(builderMock.Object);
 
                             cfg.On<BooMessage>("boo").
                                 ReactWith((m, ctx) => consumed.Set());
@@ -174,6 +186,22 @@ namespace Contour.RabbitMq.Tests
                 var failed = new AutoResetEvent(false);
                 Exception exception = null;
 
+                var strategyMock = new Moq.Mock<IFailedDeliveryStrategy>();
+                strategyMock
+                    .Setup(sm => sm.Handle(Moq.It.IsAny<IFailedConsumingContext>()))
+                    .Callback<IFailedConsumingContext>(
+                        ctx =>
+                        {
+                            exception = ctx.Exception;
+                            failed.Set();
+                            ctx.Accept();
+                        });
+
+                var builderMock = new Moq.Mock<IFailedDeliveryStrategyBuilder>();
+                builderMock
+                    .Setup(bm => bm.Build(Moq.It.IsAny<ILoggerFactory>()))
+                    .Returns(strategyMock.Object);
+
                 IBus producer = this.StartBus("producer", cfg => cfg.Route("boo"));
 
                 this.StartBus(
@@ -182,15 +210,9 @@ namespace Contour.RabbitMq.Tests
                         {
                             cfg.RegisterValidator(new BooValidator());
 
-                            cfg.On<BooMessage>("boo").
-                                ReactWith((m, ctx) => consumed.Set()).
-                                OnFailed(
-                                    ctx =>
-                                        {
-                                            exception = ctx.Exception;
-                                            failed.Set();
-                                            ctx.Accept();
-                                        });
+                            cfg.On<BooMessage>("boo")
+                                .ReactWith((m, ctx) => consumed.Set())
+                                .OnFailed(builderMock.Object);
                         });
 
                 producer.Emit("boo", new BooMessage(13));
@@ -223,6 +245,22 @@ namespace Contour.RabbitMq.Tests
                 var failed = new AutoResetEvent(false);
                 Exception exception = null;
 
+                var strategyMock = new Moq.Mock<IFailedDeliveryStrategy>();
+                strategyMock
+                    .Setup(sm => sm.Handle(Moq.It.IsAny<IFailedConsumingContext>()))
+                    .Callback<IFailedConsumingContext>(
+                        ctx =>
+                        {
+                            exception = ctx.Exception;
+                            failed.Set();
+                            ctx.Accept();
+                        });
+
+                var builderMock = new Moq.Mock<IFailedDeliveryStrategyBuilder>();
+                builderMock
+                    .Setup(bm => bm.Build(Moq.It.IsAny<ILoggerFactory>()))
+                    .Returns(strategyMock.Object);
+
                 IBus producer = this.StartBus("producer", cfg => cfg.Route("boo"));
 
                 this.StartBus(
@@ -230,13 +268,7 @@ namespace Contour.RabbitMq.Tests
                     cfg => cfg.On<BooMessage>("boo").
                                ReactWith((m, ctx) => consumed.Set()).
                                WhenVerifiedBy(new BooValidator()).
-                               OnFailed(
-                                   ctx =>
-                                       {
-                                           exception = ctx.Exception;
-                                           failed.Set();
-                                           ctx.Accept();
-                                       }));
+                               OnFailed(builderMock.Object));
 
                 producer.Emit("boo", new BooMessage(13));
 
@@ -274,19 +306,29 @@ namespace Contour.RabbitMq.Tests
                 var failed = new AutoResetEvent(false);
                 Exception exception = null;
 
+                var strategyMock = new Moq.Mock<IFailedDeliveryStrategy>();
+                strategyMock
+                    .Setup(sm => sm.Handle(Moq.It.IsAny<IFailedConsumingContext>()))
+                    .Callback<IFailedConsumingContext>(
+                        ctx =>
+                        {
+                            exception = ctx.Exception;
+                            failed.Set();
+                            ctx.Accept();
+                        });
+
+                var builderMock = new Moq.Mock<IFailedDeliveryStrategyBuilder>();
+                builderMock
+                    .Setup(bm => bm.Build(Moq.It.IsAny<ILoggerFactory>()))
+                    .Returns(strategyMock.Object);
+
                 IBus producer = this.StartBus(
                     "producer",
                     cfg =>
                         {
                             cfg.RegisterValidator(new BooValidator());
 
-                            cfg.OnFailed(
-                                ctx =>
-                                    {
-                                        exception = ctx.Exception;
-                                        failed.Set();
-                                        ctx.Accept();
-                                    });
+                            cfg.UseFailedDeliveryStrategyBuilder(builderMock.Object);
 
                             cfg.Route("request").
                                 WithDefaultCallbackEndpoint();
