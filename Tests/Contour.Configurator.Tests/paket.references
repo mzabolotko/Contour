@@ -1,7 +1,8 @@
 ﻿Microsoft.Extensions.Logging
 RabbitMQ.Client
-
 Newtonsoft.Json
 FluentAssertions
 Moq
 NUnit
+Microsoft.NET.Test.Sdk
+NUnit3TestAdapter

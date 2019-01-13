@@ -1,4 +1,7 @@
-﻿## 2.0.0-rc3
+﻿## 2.0.0-rc4
+    + Migrating from NUnit .NET Frameword to NUnit .NET Core
+
+## 2.0.0-rc3
     + Migrating from Common.Logging to Microsoft.Logging.Extensions
 
 ## 2.0.0-rc2

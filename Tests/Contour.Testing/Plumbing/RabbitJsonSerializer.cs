@@ -20,7 +20,7 @@ namespace Contour.Testing.Plumbing
 
         public string Serialize(object obj)
         {
-            return SimpleJson.SerializeObject(obj, new RabbitJsonSerializerStrategy());
+            return SimpleJson.SimpleJson.SerializeObject(obj, new RabbitJsonSerializerStrategy());
         }
     }
 }

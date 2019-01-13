@@ -2,19 +2,24 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using FluentAssertions;
+using FluentAssertions.Extensions;
+using Microsoft.Extensions.Logging;
+using Moq;
+using NUnit.Framework;
+using NUnit.Framework.Internal;
+
+using RabbitMQ.Client.Exceptions;
+
 using Contour.Testing.Transport.RabbitMq;
 using Contour.Transport.RabbitMQ.Internal;
 using Contour.Transport.RabbitMQ.Topology;
-using FluentAssertions;
-using NUnit.Framework;
-using RabbitMQ.Client.Exceptions;
+using Contour.Transport.RabbitMQ;
 
 namespace Contour.RabbitMq.Tests
 {
-    using FluentAssertions.Extensions;
-    using Microsoft.Extensions.Logging;
-    using Moq;
-    using Transport.RabbitMQ;
+
 
     // ReSharper disable InconsistentNaming
     
@@ -28,9 +33,9 @@ namespace Contour.RabbitMq.Tests
             [Test]
             public void should_not_close_connection_on_channel_failure()
             {
-                var loggerFactoryMock = new Moq.Mock<ILoggerFactory>();
-                var loggerMock = new Moq.Mock<ILogger>();
-                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(Moq.It.IsAny<string>())).Returns(loggerMock.Object);
+                var loggerFactoryMock = new Mock<ILoggerFactory>();
+                var loggerMock = new Mock<Microsoft.Extensions.Logging.ILogger>();
+                loggerFactoryMock.Setup(lfm => lfm.CreateLogger(It.IsAny<string>())).Returns(loggerMock.Object);
 
                 var bus = this.ConfigureBus("Test", cfg => { });
                 var tcs = new TaskCompletionSource<bool>(true);

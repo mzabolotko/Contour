@@ -105,7 +105,7 @@ namespace Contour.RabbitMq.Tests
             {
                 const int count = 100;
                 var countdown = new CountdownEvent(count);
-                var random = new Randomizer();
+                var random = new NUnit.Framework.Internal.Randomizer();
 
                 IBus producer = this.StartBus(
                     "producer",

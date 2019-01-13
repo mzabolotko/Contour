@@ -1,5 +1,10 @@
 @echo off
-SET PATH=%LOCALAPPDATA%\Microsoft\dotnet;%PATH%
+SET TOOL_PATH=.fake
+
+IF NOT EXIST "%TOOL_PATH%\fake.exe" (
+  dotnet tool install fake-cli --tool-path ./%TOOL_PATH%
+)
 @echo on
-dotnet restore dotnet-fake.csproj
-dotnet fake %*
+
+dotnet restore
+"%TOOL_PATH%/fake.exe" %*

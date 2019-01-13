@@ -6,3 +6,5 @@ FluentAssertions
 NUnit
 RestSharp
 Moq
+Microsoft.NET.Test.Sdk
+NUnit3TestAdapter

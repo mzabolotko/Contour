@@ -149,36 +149,31 @@ namespace Contour.Common.Tests
             #endregion
         }
 
-        /// <summary>
-        /// The when_parsing_expires_from_invalid_string.
-        /// </summary>
         [TestFixture]
         [Category("Unit")]
         public class when_parsing_expires_from_invalid_string
         {
-            #region Public Methods and Operators
-
-            /// <summary>
-            /// The should_throw.
-            /// </summary>
-            /// <param name="s">
-            /// The s.
-            /// </param>
             [Test]
-            [TestCase("", ExpectedException = typeof(ArgumentException))]
-            [TestCase("in", ExpectedException = typeof(ArgumentException))]
-            [TestCase("at", ExpectedException = typeof(ArgumentException))]
-            [TestCase("in ", ExpectedException = typeof(FormatException))]
-            [TestCase("at ", ExpectedException = typeof(FormatException))]
-            [TestCase("zzz 5", ExpectedException = typeof(ArgumentException))]
-            [TestCase("in 5 6", ExpectedException = typeof(ArgumentException))]
-            [TestCase("at 2014-05-06 03:08:09", ExpectedException = typeof(ArgumentException))]
-            public void should_throw(string s)
+            [TestCase("")]
+            [TestCase("in")]
+            [TestCase("at")]
+            [TestCase("zzz 5")]
+            [TestCase("in 5 6")]
+            [TestCase("at 2014-05-06 03:08:09")]
+            public void should_throw_argument_exception(string s)
             {
-                Expires.Parse(s);
+                Action action = (() => Expires.Parse(s));
+                action.Should().Throw<ArgumentException>();
             }
 
-            #endregion
+            [Test]
+            [TestCase("in ")]
+            [TestCase("at ")]
+            public void should_throw_format_exception(string s)
+            {
+                Action action = (() => Expires.Parse(s));
+                action.Should().Throw<FormatException>();
+            }
         }
 
         /// <summary>
