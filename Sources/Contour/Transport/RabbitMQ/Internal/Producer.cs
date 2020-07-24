@@ -53,7 +53,7 @@ namespace Contour.Transport.RabbitMQ.Internal
             this.RouteResolver = routeResolver;
             this.ConfirmationIsRequired = confirmationIsRequired;
             this.loggerFactory = loggerFactory;
-            this.logger = this.loggerFactory.CreateLogger($"{this.GetType().FullName}({this.BrokerUrl}, {this.Label}, {this.GetHashCode()})");
+            this.logger = this.loggerFactory.CreateLogger($"{this.GetType().FullName}");
         }
 
         public event EventHandler<ProducerStoppedEventArgs> Stopped = (sender, args) => { };

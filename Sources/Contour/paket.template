@@ -1,3 +1,5 @@
 type project
+id Skuggamynd
+authors Mikhail Zabolotko
 licenseUrl https://github.com/mzabolotko/Contour/blob/master/LICENSE.md
 include-pdbs true

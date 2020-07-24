@@ -27,7 +27,7 @@ namespace Contour.Transport.RabbitMQ.Internal
         /// </param>
         public PublishConfirmationTracker(RabbitChannel channel, ILoggerFactory loggerFactory)
         {
-            this.logger = loggerFactory.CreateLogger($"{this.GetType().FullName}({this.GetHashCode()})");
+            this.logger = loggerFactory.CreateLogger($"{this.GetType().FullName}");
             this.channel = channel;
             this.channel.Shutdown += this.OnChannelShutdown;
         }

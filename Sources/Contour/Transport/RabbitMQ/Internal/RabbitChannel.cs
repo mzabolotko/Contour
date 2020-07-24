@@ -32,7 +32,7 @@ namespace Contour.Transport.RabbitMQ.Internal
             this.ConnectionId = connectionId;
             this.Model = model;
             this.busContext = busContext;
-            this.logger = loggerFactory.CreateLogger($"{this.GetType().FullName}({this.ConnectionId}, {this.GetHashCode()})");
+            this.logger = loggerFactory.CreateLogger($"{this.GetType().FullName}");
 
             this.Model.ModelShutdown += this.OnModelShutdown;
         }

@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2000
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{164DE6AD-73A5-4F62-85AC-9090D2D720FF}"
 	ProjectSection(SolutionItems) = preProject
@@ -17,6 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		appveyor.yml = appveyor.yml
 		build.fsx = build.fsx
 		fake.cmd = fake.cmd
+		global.json = global.json
 		LICENSE.md = LICENSE.md
 		paket.dependencies = paket.dependencies
 		README.md = README.md
@@ -27,11 +28,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contour", "Sources\Contour\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contour.Common.Tests", "Tests\Contour.Common.Tests\Contour.Common.Tests.csproj", "{49DC8F5F-FEA0-4A0E-B9E8-E6B41153A136}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contour.Testing", "Tests\Contour.Testing\Contour.Testing.csproj", "{7EAB27D6-4DC4-43FE-AE5F-101C6C22440A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contour.Testing", "Tests\Contour.Testing\Contour.Testing.csproj", "{7EAB27D6-4DC4-43FE-AE5F-101C6C22440A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contour.Configurator.Tests", "Tests\Contour.Configurator.Tests\Contour.Configurator.Tests.csproj", "{08FA34C6-4B95-4D92-ABFF-03DE1EF70EC6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contour.Configurator.Tests", "Tests\Contour.Configurator.Tests\Contour.Configurator.Tests.csproj", "{08FA34C6-4B95-4D92-ABFF-03DE1EF70EC6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contour.RabbitMq.Tests", "Tests\Contour.RabbitMq.Tests\Contour.RabbitMq.Tests.csproj", "{FCA42760-939F-4D86-9B15-95DF3E27B817}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contour.RabbitMq.Tests", "Tests\Contour.RabbitMq.Tests\Contour.RabbitMq.Tests.csproj", "{FCA42760-939F-4D86-9B15-95DF3E27B817}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -116,8 +116,7 @@ namespace Contour.Transport.RabbitMQ.Internal
             this.unhandledDeliveryStrategy = this.ReceiverOptions.GetUnhandledDeliveryStrategyBuilder().Build(loggerFactory);
             this.failedDeliveryStrategy = this.ReceiverOptions.GetFailedDeliveryStrategyBuilder().Build(loggerFactory);
 
-            this.logger = loggerFactory.CreateLogger($"{this.GetType().FullName}({this.BrokerUrl}, {this.GetHashCode()})");
-
+            this.logger = loggerFactory.CreateLogger($"{this.GetType().FullName}");
         }
 
         public event EventHandler<ListenerStoppedEventArgs> Stopped = (sender, args) => { };
