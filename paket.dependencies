@@ -1,8 +1,8 @@
 source https://api.nuget.org/v3/index.json
 
 nuget RabbitMQ.Client 5.0.1
-nuget System.Configuration.ConfigurationManager 4.7.0
-nuget Microsoft.Extensions.Logging 3.1.1
+nuget System.Configuration.ConfigurationManager 5.0.0
+nuget Microsoft.Extensions.Logging 5.0.0
 
 nuget FAKE 5.8.4
 
